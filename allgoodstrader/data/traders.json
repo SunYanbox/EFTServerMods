@@ -1,0 +1,38 @@
+[
+  {
+    "id": "68dcbdecd6e04c263b42f6ba",
+    "name": "枪械与配件商人",
+    "location": "南天门",
+    "res_name": "gunmod_trader",
+    "buyPriceCoef": 100,
+    "repairPriceCoef": 100,
+    "insurancePriceCoef": 100
+  },
+  {
+    "id": "68e24cd2607f5c9ae44c27b0",
+    "name": "食物饮品药品商人",
+    "location": "北天门",
+    "res_name": "fooddrink_trader",
+    "buyPriceCoef": 100,
+    "repairPriceCoef": 100,
+    "insurancePriceCoef": 100
+  },
+  {
+    "id": "68e24cdc607f5c9ae44c27b1",
+    "name": "胸挂背包弹药商人",
+    "location": "南天门",
+    "res_name": "backpack_trader",
+    "buyPriceCoef": 100,
+    "repairPriceCoef": 100,
+    "insurancePriceCoef": 100
+  },
+  {
+    "id": "68e24cdc607f5c9ae44c27b2",
+    "name": "杂货商人",
+    "location": "南天门",
+    "res_name": "goods_trader",
+    "buyPriceCoef": 100,
+    "repairPriceCoef": 100,
+    "insurancePriceCoef": 100
+  }
+]
