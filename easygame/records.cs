@@ -1,0 +1,119 @@
+using System.Text.Json.Serialization;
+using SPTarkov.Server.Core.Models.Common;
+using SPTarkov.Server.Core.Models.Eft.Common.Tables;
+
+namespace easygame;
+
+// 模组配置
+record StimulatorConfig
+{
+    [JsonPropertyName("使用次数")]
+    public int UseTimes {get; set;}
+    [JsonPropertyName("价格倍率")]
+    public double PriceModify {get; set;}
+    [JsonPropertyName("单针剂重量")]
+    public double Weight {get; set;}
+}
+
+record ModConfigData {
+    [JsonPropertyName("针剂")]
+    public StimulatorConfig? StimulatorConfig { get; init; }
+    [JsonPropertyName("带入对局物品限制")]
+    public double EnterGameItemLimit {get; set;}
+}
+// 模组新物品
+public class NewItem
+{
+    [JsonPropertyName("_id")]
+    public string? Id { get; set; }
+    
+    [JsonPropertyName("_name")]
+    public string? Name { get; set; }
+    
+    [JsonPropertyName("_parent")]
+    public string? Parent { get; set; }
+    
+    [JsonPropertyName("_proto")]
+    public string? Proto { get; set; }
+    
+    [JsonPropertyName("_type")]
+    public string? Type { get; set; }
+    
+    [JsonPropertyName("_props")]
+    public TemplateItemProperties? Props { get; set; }
+}
+
+// public class ItemProps
+// {
+//     [JsonPropertyName("Description")]
+//     public string? Description { get; set; }
+//     
+//     [JsonPropertyName("LootExperience")]
+//     public int LootExperience { get; set; }
+//     
+//     [JsonPropertyName("MaxHpResource")]
+//     public int MaxHpResource { get; set; }
+//     
+//     [JsonPropertyName("Name")]
+//     public string? Name { get; set; }
+//     
+//     [JsonPropertyName("ShortName")]
+//     public string? ShortName { get; set; }
+//     
+//     [JsonPropertyName("StimulatorBuffs")]
+//     public string? StimulatorBuffs { get; set; }
+//     
+//     [JsonPropertyName("Weight")]
+//     public double Weight { get; set; }
+//     
+//     [JsonPropertyName("effects_damage")]
+//     public EffectsDamage? EffectsDamage { get; set; }
+//     
+//     [JsonPropertyName("effects_health")]
+//     public List<object>? EffectsHealth { get; set; }
+//     
+//     [JsonPropertyName("hpResourceRate")]
+//     public int HpResourceRate { get; set; }
+//     
+//     [JsonPropertyName("medEffectType")]
+//     public string? MedEffectType { get; set; }
+//     
+//     [JsonPropertyName("medUseTime")]
+//     public int MedUseTime { get; set; }
+// }
+//
+// public class EffectsDamage
+// {
+//     [JsonPropertyName("Pain")]
+//     public EffectDamage? Pain { get; set; }
+//     
+//     [JsonPropertyName("Contusion")]
+//     public EffectDamage? Contusion { get; set; }
+//     
+//     [JsonPropertyName("Fracture")]
+//     public EffectDamage? Fracture { get; set; }
+//     
+//     [JsonPropertyName("HeavyBleeding")]
+//     public EffectDamage? HeavyBleeding { get; set; }
+//     
+//     [JsonPropertyName("Intoxication")]
+//     public EffectDamage? Intoxication { get; set; }
+//     
+//     [JsonPropertyName("LightBleeding")]
+//     public EffectDamage? LightBleeding { get; set; }
+//     
+//     [JsonPropertyName("RadExposure")]
+//     public EffectDamage? RadExposure { get; set; }
+// }
+//
+// public class EffectDamage
+// {
+//     [JsonPropertyName("delay")]
+//     public int Delay { get; set; }
+//     
+//     [JsonPropertyName("duration")]
+//     public int Duration { get; set; }
+//     
+//     [JsonPropertyName("fadeOut")]
+//     public int FadeOut { get; set; }
+// }

@@ -25,7 +25,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "AllGoodsTrader";
     public override string Author { get; init; } = "Suntion";
     public override List<string>? Contributors { get; init; } = [];
-    public override SemanticVersioning.Version Version { get; init; } = new("0.4.0");
+    public override SemanticVersioning.Version Version { get; init; } = new("0.4.2");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     
     
@@ -33,7 +33,7 @@ public record ModMetadata : AbstractModMetadata
     public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
     public override string? Url { get; init; } = "https://github.com/sp-tarkov/server-mod-examples";
     public override bool? IsBundleMod { get; init; } = false;
-    public override string? License { get; init; } = "MIT";
+    public override string? License { get; init; } = "CC-BY-SA";
 }
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
@@ -194,6 +194,10 @@ class Traders(
     private string? ResPath;
     private string? ItemCachePath;
 
+    public static string? ShG_2_Id;
+    static public readonly string ShG_2 = ItemTpl.ROCKETLAUNCHER_RSHG2_725MM_ROCKET_LAUNCHER;
+    static public readonly string ShG_2_Ammo = ItemTpl.ROCKET_725_SHG2;
+
     private readonly TraderConfig _traderConfig = configServer.GetConfig<TraderConfig>();
     private readonly RagfairConfig _ragfairConfig = configServer.GetConfig<RagfairConfig>();
     private Dictionary<MongoId,TemplateItem>? _itemTpls;
@@ -204,6 +208,19 @@ class Traders(
         { new MongoId("68e24cd2607f5c9ae44c27b0"), ItemCategories.FoodDrinkAndMedical },
         { new MongoId("68e24cdc607f5c9ae44c27b1"), ItemCategories.EquipmentAndAmmo },
         { new MongoId("68e24cdc607f5c9ae44c27b2"), ItemCategories.Miscellaneous }
+    };
+
+    public static readonly List<MongoId> SecureContainerIds = new List<MongoId>
+    {
+        ItemTpl.SECURE_CONTAINER_ALPHA,
+        ItemTpl.SECURE_CONTAINER_BETA,
+        ItemTpl.SECURE_CONTAINER_BOSS,
+        ItemTpl.SECURE_CONTAINER_EPSILON,
+        ItemTpl.SECURE_CONTAINER_GAMMA,
+        ItemTpl.SECURE_CONTAINER_GAMMA_TUE,
+        ItemTpl.SECURE_CONTAINER_KAPPA,
+        ItemTpl.SECURE_CONTAINER_KAPPA_DESECRATED,
+        ItemTpl.SECURE_CONTAINER_THETA
     };
 
     public Task OnLoad()
@@ -256,6 +273,13 @@ class Traders(
                         Nickname = trader.Name ?? "佚名",
                         Surname = trader.Name ?? "佚名",
                     };
+                    _traderBases[traderId].ItemsBuy = new ItemBuyData
+                    {
+                        IdList = [],
+                        Category = new HashSet<MongoId>(TraderClass[traderId])
+                    };
+                    _traderBases[traderId].SellCategory = new List<string>(TraderClass[traderId].Select(x => x.ToString()));
+                    logger.Debug($"data of items_buy: {jsonUtil.Serialize(_traderBases[traderId].ItemsBuy)}");
                     return Task.CompletedTask;
                 });
                 logger.Debug($"[AllGoodsTrader] 注册{trader.Name ?? "佚名"}的ID: {_traderBases[traderId].Id}");
@@ -300,14 +324,20 @@ class Traders(
                 {
                     List<MongoId> baseClasses = TraderClass[traderId];
                     assort = GetAssort(baseClasses.ToArray());
-                    _traderBases[traderId].SellCategory ??= [];
-                    foreach (var typeId in baseClasses)
+                    if (traderId.ToString() == "68e24cdc607f5c9ae44c27b2")
                     {
-                        _traderBases[traderId].SellCategory?.Add(typeId.ToString());
+                        foreach (var secureContainerId in SecureContainerIds)
+                        {
+                            CreateOrGetItemData(secureContainerId, assort);
+                        }
                     }
-
                     return Task.CompletedTask;
                 });
+                // logger.Info($"[AllGoodsTrader] 商人{_traderBases[traderId].Name}({_traderBases[traderId].Id})获取到{assort.Items.Count}条商品数据");
+                // if (trader.Id == "68e24cdc607f5c9ae44c27b1")
+                // {
+                //     File.WriteAllText("assort.json", jsonUtil.Serialize(assort));
+                // }
                 addCustomTraderHelper.OverwriteTraderAssort(_traderBases[traderId].Id, assort);
             }
 
@@ -326,7 +356,6 @@ class Traders(
         {
             logger.Info("[AllGoodsTrader] 商人数据加载失败: " + e.Message + e.StackTrace);
         }
-
         return Task.CompletedTask;
     }
 
@@ -335,6 +364,7 @@ class Traders(
         try
         {
             func();
+            logger.Debug($"[AllGoodsTrader]<{name}> 任务完成");
         }
         catch (Exception e)
         {
@@ -367,7 +397,11 @@ class Traders(
                      || baseClass == BaseClasses.HEADWEAR
                      || baseClass == BaseClasses.ARMOR) && itemHelper.ItemHasSlots(itemTpl)) continue;
                 if (itemHelper.IsValidItem(itemTpl)) {
-                    CreateOrGetItemData(itemTpl, assort);
+                    Item newItem = CreateOrGetItemData(itemTpl, assort);
+                    // 确保RPG有弹药
+                    HandleRocket(assort, itemTpl, newItem.Id);
+                    // 确保弹药盒有弹药
+                    HandleAmmoBox(assort, itemTpl, newItem.Id);
                 }
             }
         }
@@ -375,12 +409,93 @@ class Traders(
         return assort;
     }
 
-    public void CreateOrGetItemData(MongoId itemTpl, TraderAssort assort)
+    public MongoId GetDynamicId(MongoId itemTpl)
+    {
+        if (_itemCache.TryGetValue(itemTpl, out var ammoId)) return ammoId;
+        // 新ID
+        _itemCache[itemTpl] = new MongoId();
+        return _itemCache[itemTpl];
+    }
+
+    public void HandleRocket(TraderAssort assort, MongoId itemTpl, MongoId launcherId)
+    {
+        if (itemTpl == ItemTpl.ROCKETLAUNCHER_RSHG2_725MM_ROCKET_LAUNCHER)
+        {
+            MongoId dynamicIdRocket725Shg2 = GetDynamicId(ItemTpl.ROCKET_725_SHG2);
+            double priceRocket725Shg2 = itemHelper.GetItemPrice(ItemTpl.ROCKET_725_SHG2) ?? 0;
+
+            Item item = new Item
+            {
+                Id = dynamicIdRocket725Shg2,
+                Template = ItemTpl.ROCKET_725_SHG2,
+                ParentId = launcherId.ToString(),
+                SlotId = "patron_in_weapon"
+            };
+            AddItemToAssort(assort, item, priceRocket725Shg2 * _modConfig.PriceModify ?? 0, 1);
+        }
+    }
+    
+    public void HandleAmmoBox(TraderAssort assort, MongoId itemTpl, MongoId boxId)
+    {
+        if (itemHelper.IsOfBaseclass(itemTpl, BaseClasses.AMMO_BOX))
+        {
+            TemplateItem box = _itemTpls[itemTpl];
+            if (box == null || box.Properties == null || box.Properties.StackSlots == null) return;
+            foreach (var stackSlot in box.Properties.StackSlots)
+            {
+                if (stackSlot.Properties == null || stackSlot.Properties.Filters == null || stackSlot.MaxCount == null) continue;
+                foreach (var filter in stackSlot.Properties.Filters)
+                {
+                    if (filter.Filter == null) continue;
+                    foreach (var ammoTpl in filter.Filter)
+                    {
+                        // 要确保唯一, 不能用封装的默认方法
+                        // MongoId ammodynamicId = GetDynamicId(ammoTpl);
+                        MongoId ammodynamicId = new  MongoId();
+                        double price = itemHelper.GetItemPrice(ammoTpl) ?? 0;
+                        Item ammoInner = new Item
+                        {
+                            Id = ammodynamicId,
+                            Template = ammoTpl,
+                            ParentId = boxId.ToString(),
+                            SlotId = "cartridges",
+                            Location = 0,
+                            Upd = new Upd
+                            {
+                                StackObjectsCount= stackSlot.MaxCount
+                            },
+                        };
+                        // logger.Debug($"[AllGoodsTrader] 已添加弹药盒的弹药: {ammoInner}\n");
+                        AddItemToAssort(assort, ammoInner, price * _modConfig.PriceModify ?? 0, 1);
+                        // logger.Info($"[AllGoodsTrader] 弹药盒的弹药ID(Tpl: {ammoTpl}, dynamicId: {ammodynamicId})\n\t在assort中的数量: {assort.Items.Count(x => x.Id == ammoInner.Id)}\n");
+                    }
+                }
+            }
+        }
+    }
+
+    public void AddItemToAssort(TraderAssort assort, Item item, double price = 0, int loyalLevel = 1)
+    {
+        assort.Items.Add(item);
+        assort.LoyalLevelItems[item.Id] = 1;
+        assort.BarterScheme[item.Id] = new List<List<BarterScheme>>
+        {
+            new List<BarterScheme>
+            {
+                new BarterScheme
+                {
+                    Count = price,
+                    Template = RebId
+                }
+            }
+        };
+    }
+
+    public Item CreateOrGetItemData(MongoId itemTpl, TraderAssort assort)
     {
         // TemplateItem tempItem = _itemTpls[itemTpl];
         double price = itemHelper.GetItemPrice(itemTpl) ?? 0;
-        MongoId dynamicId = _itemCache.TryGetValue(itemTpl, out var id) ? id : new MongoId();
-        _itemCache[itemTpl] = dynamicId;
+        MongoId dynamicId = GetDynamicId(itemTpl);
 
         // logger.Debug($"[AllGoodsTrader] 物品{itemTpl}的动态ID: {dynamicId}");
         
@@ -396,19 +511,8 @@ class Traders(
                 StackObjectsCount = 9999999
             }
         };
-        assort.Items.Add(newItem);
-        assort.LoyalLevelItems[dynamicId] = 1;
-        assort.BarterScheme[dynamicId] = new List<List<BarterScheme>>
-        {
-            new List<BarterScheme>
-            {
-                new BarterScheme
-                {
-                    Count = price * _modConfig.PriceModify ?? 0,
-                    Template = RebId
-                }
-            }
-        };
+        AddItemToAssort(assort, newItem, price * _modConfig.PriceModify ?? 0, 1);
+        return newItem;
     }
 
     public static readonly MongoId RebId = new MongoId("5449016a4bdc2d6f028b456f");
