@@ -20,6 +20,24 @@ record ModConfigData {
     public StimulatorConfig? StimulatorConfig { get; init; }
     [JsonPropertyName("带入对局物品限制")]
     public double EnterGameItemLimit {get; set;}
+    [JsonPropertyName("是否解除所有物品在跳蚤市场售卖限制")]
+    public bool IsUnlockAllItemsSellLimit {get; set;}
+    [JsonPropertyName("所有存档血量倍率")]
+    public double HealthModify {get; set;}
+    [JsonPropertyName("所有存档能量与水分倍率")]
+    public double EnergyHydrationModify {get; set;}
+    [JsonPropertyName("战局时长倍率")]
+    public double RaidTimeModify {get; set;}
+    [JsonPropertyName("装弹时间倍率")]
+    public double TakeInAmmoTimeModify {get; set;}
+    [JsonPropertyName("卸弹时间倍率")]
+    public double TakeOutAmmoTimeModify {get; set;}
+    [JsonPropertyName("检查弹匣时间倍率")]
+    public double CheckAmmoTimeModify {get; set;}
+    [JsonPropertyName("每级跳蚤市场上限倍率")]
+    public double MaxActiveOfferCountModify {get; set;}
+    [JsonPropertyName("输出修改结果日志")]
+    public bool OutputResultLogOfAdjust {get; set;}
 }
 // 模组新物品
 public class NewItem

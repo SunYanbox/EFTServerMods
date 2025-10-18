@@ -1,0 +1,187 @@
+[
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 0,
+    "Duration": 60,
+    "SkillName": "Strength",
+    "Value": 4
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 90,
+    "Duration": 60,
+    "SkillName": "Strength",
+    "Value": 8
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 180,
+    "Duration": 60,
+    "SkillName": "Strength",
+    "Value": 16
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 360,
+    "Duration": 60,
+    "SkillName": "Strength",
+    "Value": 32
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 720,
+    "Duration": 33550336,
+    "SkillName": "Strength",
+    "Value": 64
+  },
+
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 0,
+    "Duration": 60,
+    "SkillName": "Perception",
+    "Value": 4
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 90,
+    "Duration": 60,
+    "SkillName": "Perception",
+    "Value": 8
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 180,
+    "Duration": 60,
+    "SkillName": "Perception",
+    "Value": 16
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 360,
+    "Duration": 60,
+    "SkillName": "Perception",
+    "Value": 32
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 720,
+    "Duration": 33550336,
+    "SkillName": "Perception",
+    "Value": 64
+  },
+
+
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 0,
+    "Duration": 60,
+    "SkillName": "Endurance",
+    "Value": 4
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 90,
+    "Duration": 60,
+    "SkillName": "Endurance",
+    "Value": 8
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 180,
+    "Duration": 60,
+    "SkillName": "Endurance",
+    "Value": 16
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 360,
+    "Duration": 60,
+    "SkillName": "Endurance",
+    "Value": 32
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 720,
+    "Duration": 33550336,
+    "SkillName": "Endurance",
+    "Value": 64
+  },
+
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 0,
+    "Duration": 60,
+    "SkillName": "Attention",
+    "Value": 4
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 90,
+    "Duration": 60,
+    "SkillName": "Attention",
+    "Value": 8
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 180,
+    "Duration": 60,
+    "SkillName": "Attention",
+    "Value": 16
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 360,
+    "Duration": 60,
+    "SkillName": "Attention",
+    "Value": 32
+  },
+  {
+    "AbsoluteValue": true,
+    "BuffType": "SkillRate",
+    "Chance": 1,
+    "Delay": 720,
+    "Duration": 33550336,
+    "SkillName": "Attention",
+    "Value": 64
+  }
+
+]

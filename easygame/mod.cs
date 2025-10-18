@@ -24,7 +24,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "EasyGame";
     public override string Author { get; init; } = "Suntion";
     public override List<string>? Contributors { get; init; } = [];
-    public override SemanticVersioning.Version Version { get; init; } = new("0.2.0");
+    public override SemanticVersioning.Version Version { get; init; } = new("0.2.3");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     
     
@@ -60,6 +60,10 @@ public class EasyGameMod(
     public const string SimFuZhong = "5f9d9b8e6f8b4a1e3c7d5a2d";
     public const string SimJueDi = "5f9d9b8e6f8b4a1e3c7d5a2e";
     public const string SimYongJie = "5f9d9b8e6f8b4a1e3c7d5a30";
+    
+    // 商人ID
+    public MongoId TherapistId = new MongoId("54cb57776803fa99248b456e");
+    public static readonly MongoId RebId = new MongoId("5449016a4bdc2d6f028b456f");
     
     // 我们通过调用 GetConfig<>()获取配置，并在菱形 <> 括弧内传递配置的 "类型"。
     // 这些字段以 _ 开头，当你在代码中创建私有字段时，这是一个很好的约定。
@@ -144,7 +148,7 @@ public class EasyGameMod(
             return Task.CompletedTask;
         });
     }
-
+    
     public void AddNewItem()
     {
         TryCatch("注册针剂效果", () =>
@@ -152,6 +156,11 @@ public class EasyGameMod(
             AddNewEffect();
             return Task.CompletedTask;
         });
+
+        if (!databaseService.GetTables().Traders.TryGetValue(TherapistId, out var therapistTrader))
+        {
+            logger.Warning($"[EasyGame] 无法找到商人Therapist的实例, 请检查你的Therapist商人ID是否是{TherapistId}, 如果不是, 可能被意外修改");
+        }
         
         foreach (var (_, newItem) in newItems)
         {
@@ -177,6 +186,23 @@ public class EasyGameMod(
                 OverrideProperties = newItem.Props
             };
             customItemService.CreateItemFromClone(details);
+            if (therapistTrader != null)
+            {
+                TraderAssort assort = therapistTrader.Assort;
+                Item item = new Item
+                {
+                    Id = new MongoId(),
+                    Template = newItem.Id,
+                    ParentId = "hideout",
+                    SlotId = "hideout",
+                    Upd = new Upd
+                    {
+                        UnlimitedCount = true,
+                        StackObjectsCount = 9999999
+                    }
+                };
+                AddItemToAssort(assort, item, ItemPrices[newItem.Id], 1);
+            }
         }
     }
 
@@ -199,6 +225,74 @@ public class EasyGameMod(
             dataItem.MaxInRaid = Math.Max(dataItem.MaxInRaid, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInRaid);
             dataItem.MaxInLobby = Math.Max(dataItem.MaxInLobby, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInLobby);
         }
+        // 迷宫地图入口
+        var mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
+        mapLabyrinth.Base.Enabled = true;
+        mapLabyrinth.Base.ForceOnlineRaidInPVE = false;
+        if (_modConfigData == null) return;
+        // 解除物品在跳蚤售卖限制
+        if (_modConfigData.IsUnlockAllItemsSellLimit)
+        {
+            foreach (var (_, item) in databaseService.GetItems().Where(
+                         x => x.Value.Properties != null && x.Value.Properties.CanSellOnRagfair == false))
+            {
+                if (item.Properties == null) continue;
+                item.Properties.CanSellOnRagfair = true;
+            }
+        }
+        // 所有存档的基础血量与能量, 水分
+        foreach (var (profileName, profileSides) in databaseService.GetProfileTemplates())
+        {
+            // 血量修改
+            foreach (var side in new TemplateSide?[] { profileSides.Bear, profileSides.Usec })
+            {
+                if (side?.Character?.Health?.BodyParts == null) continue;
+                foreach (var (_, bodyPartHealth) in side.Character.Health.BodyParts)
+                {
+                    if (bodyPartHealth?.Health?.Maximum != null)
+                    {
+                        bodyPartHealth.Health.Maximum *= _modConfigData.HealthModify;
+                    }
+                }
+                if (side.Character.Health?.Hydration?.Maximum == null ||
+                    side.Character.Health?.Energy?.Maximum == null)
+                    continue;
+                side.Character.Health.Energy.Maximum *= _modConfigData.EnergyHydrationModify;
+                side.Character.Health.Hydration.Maximum *= _modConfigData.EnergyHydrationModify;
+            }
+            if (_modConfigData.OutputResultLogOfAdjust) Info($"存档类型{profileName}修改完毕");
+        }
+        // 战局时长修改
+        var locations = databaseService.GetLocations();
+        foreach (var (mapName, location) in locations.GetDictionary())
+        {
+            if (location.Base?.EscapeTimeLimit == null) continue;
+            location.Base.EscapeTimeLimit *= _modConfigData.RaidTimeModify;
+            location.Base.EscapeTimeLimit = Math.Max(1, location.Base?.EscapeTimeLimit ?? 0);
+            if (_modConfigData.OutputResultLogOfAdjust) Info($"地图{mapName}的对局时间已被修改至: {location.Base?.EscapeTimeLimit ?? -1}");
+        }
+        // 弹夹熟悉修改
+        Globals globals = databaseService.GetGlobals();
+        TryCatch("修改弹夹装弹/检查/卸弹速度", () =>
+        {
+            globals.Configuration.BaseCheckTime *= _modConfigData.CheckAmmoTimeModify;
+            globals.Configuration.BaseLoadTime *= _modConfigData.TakeInAmmoTimeModify;
+            globals.Configuration.BaseUnloadTime *= _modConfigData.TakeOutAmmoTimeModify;
+            if (_modConfigData.OutputResultLogOfAdjust) Info($"弹夹相关修改结果: 装弹({globals.Configuration.BaseLoadTime}s) 卸弹({globals.Configuration.BaseUnloadTime}s) 检查({globals.Configuration.BaseCheckTime}s)");
+            return Task.CompletedTask;
+        });
+        // 跳蚤挂单上限修改
+        TryCatch("跳蚤挂单上限修改", () =>
+        {
+            string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
+            foreach (var offer in globals.Configuration.RagFair.MaxActiveOfferCount)
+            {
+                offer.Count *= _modConfigData.MaxActiveOfferCountModify;
+                result += $"\t{offer.CountForSpecialEditions} -> {offer.Count}";
+            }
+            if (_modConfigData.OutputResultLogOfAdjust) Info(result);
+            return Task.CompletedTask;
+        });
     }
     
     public void AdjustSimulator()
@@ -214,6 +308,7 @@ public class EasyGameMod(
                 if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
                 templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
                 templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
+                if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
                 itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
             }
         }
@@ -241,7 +336,22 @@ public class EasyGameMod(
     }
     
     
-    
+    public void AddItemToAssort(TraderAssort assort, Item item, double price = 0, int loyalLevel = 1)
+    {
+        assort.Items.Add(item);
+        assort.LoyalLevelItems[item.Id] = 1;
+        assort.BarterScheme[item.Id] = new List<List<BarterScheme>>
+        {
+            new List<BarterScheme>
+            {
+                new BarterScheme
+                {
+                    Count = price,
+                    Template = RebId
+                }
+            }
+        };
+    }
     
     
     
