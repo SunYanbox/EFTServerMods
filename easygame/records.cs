@@ -37,6 +37,12 @@ record WhetherEnableFunction
     public bool AmmoTimeModify {get; set;}
     [JsonPropertyName("是否修改每级跳蚤市场挂单上限倍率")]
     public bool MaxActiveOfferCountModify {get; set;}
+    [JsonPropertyName("是否调整实验室访问卡次数")]
+    public bool AdjustLabsAccess {get; set;}
+    [JsonPropertyName("是否修改所有药剂耐久(吗啡除外)")]
+    public bool AdjustSimulatorMaxHpResource {get; set;}
+    [JsonPropertyName("是否调整迷宫访问卡次数")]
+    public bool AdjustLabysAccess {get; set;}
 }
 
 record ModConfigData {
@@ -62,6 +68,10 @@ record ModConfigData {
     public double MaxActiveOfferCountModify {get; set;}
     [JsonPropertyName("输出修改结果日志")]
     public bool OutputResultLogOfAdjust {get; set;}
+    [JsonPropertyName("实验室访问卡耐久")]
+    public int LabsAccessMaximumNumberOfUsage {get; set;}
+    [JsonPropertyName("迷宫访问卡耐久")]
+    public int LabysAccessMaximumNumberOfUsage {get; set;}
 }
 // 模组新物品
 public class NewItem
