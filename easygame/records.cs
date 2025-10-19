@@ -15,13 +15,37 @@ record StimulatorConfig
     public double Weight {get; set;}
 }
 
+record WhetherEnableFunction
+{
+    [JsonPropertyName("是否解除所有物品在跳蚤市场售卖限制")]
+    public bool IsUnlockAllItemsSellLimit {get; set;}
+    [JsonPropertyName("是否将迷宫地图显示于地图选择页面")]
+    public bool ShowMapToChoiceScene {get; set;}
+    [JsonPropertyName("是否启用新针剂")]
+    public bool NewStimulator {get; set;}
+    [JsonPropertyName("是否启用对针剂耐久的修改")]
+    public bool StimulatorChange {get; set;}
+    [JsonPropertyName("是否启用对实验室钥匙卡的修改")]
+    public bool LabAccessChange {get; set;}
+    [JsonPropertyName("是否自定义带入物品限制")]
+    public bool EnterGameItemLimit {get; set;}
+    [JsonPropertyName("是否修改血量与水分")]
+    public bool EnergyHydrationModify {get; set;}
+    [JsonPropertyName("是否修改战局时长")]
+    public bool RaidTimeModify {get; set;}
+    [JsonPropertyName("是否修改弹夹装单卸弹检查弹匣时间")]
+    public bool AmmoTimeModify {get; set;}
+    [JsonPropertyName("是否修改每级跳蚤市场挂单上限倍率")]
+    public bool MaxActiveOfferCountModify {get; set;}
+}
+
 record ModConfigData {
+    [JsonPropertyName("是否启用功能")]
+    public WhetherEnableFunction? EnableFunction { get; set; }
     [JsonPropertyName("针剂")]
     public StimulatorConfig? StimulatorConfig { get; init; }
     [JsonPropertyName("带入对局物品限制")]
     public double EnterGameItemLimit {get; set;}
-    [JsonPropertyName("是否解除所有物品在跳蚤市场售卖限制")]
-    public bool IsUnlockAllItemsSellLimit {get; set;}
     [JsonPropertyName("所有存档血量倍率")]
     public double HealthModify {get; set;}
     [JsonPropertyName("所有存档能量与水分倍率")]
@@ -34,7 +58,7 @@ record ModConfigData {
     public double TakeOutAmmoTimeModify {get; set;}
     [JsonPropertyName("检查弹匣时间倍率")]
     public double CheckAmmoTimeModify {get; set;}
-    [JsonPropertyName("每级跳蚤市场上限倍率")]
+    [JsonPropertyName("每级跳蚤市场挂单上限倍率")]
     public double MaxActiveOfferCountModify {get; set;}
     [JsonPropertyName("输出修改结果日志")]
     public bool OutputResultLogOfAdjust {get; set;}

@@ -24,7 +24,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "EasyGame";
     public override string Author { get; init; } = "Suntion";
     public override List<string>? Contributors { get; init; } = [];
-    public override SemanticVersioning.Version Version { get; init; } = new("0.2.3");
+    public override SemanticVersioning.Version Version { get; init; } = new("0.2.4");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     
     
@@ -151,6 +151,9 @@ public class EasyGameMod(
     
     public void AddNewItem()
     {
+        if (_modConfigData?.EnableFunction == null) return;
+        if (!_modConfigData.EnableFunction.NewStimulator) return;
+        
         TryCatch("注册针剂效果", () =>
         {
             AddNewEffect();
@@ -219,19 +222,29 @@ public class EasyGameMod(
     public void AdjustConfig()
     {
         RestrictionsInRaid[] data = databaseService.GetTables().Globals.Configuration.RestrictionsInRaid;
+        if (_modConfigData == null || _modConfigData?.EnableFunction == null) return;
+        var enableFunction = _modConfigData.EnableFunction;
+        
         // Credits for @HiddenCirno
-        foreach (RestrictionsInRaid dataItem in data)
+        if (enableFunction.EnterGameItemLimit)
         {
-            dataItem.MaxInRaid = Math.Max(dataItem.MaxInRaid, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInRaid);
-            dataItem.MaxInLobby = Math.Max(dataItem.MaxInLobby, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInLobby);
+            foreach (RestrictionsInRaid dataItem in data)
+            {
+                dataItem.MaxInRaid = Math.Max(dataItem.MaxInRaid, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInRaid);
+                dataItem.MaxInLobby = Math.Max(dataItem.MaxInLobby, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInLobby);
+            }
         }
+        
         // 迷宫地图入口
-        var mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
-        mapLabyrinth.Base.Enabled = true;
-        mapLabyrinth.Base.ForceOnlineRaidInPVE = false;
-        if (_modConfigData == null) return;
+        if (enableFunction.ShowMapToChoiceScene)
+        {
+            var mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
+            mapLabyrinth.Base.Enabled = true;
+            mapLabyrinth.Base.ForceOnlineRaidInPVE = false;
+        }
+        
         // 解除物品在跳蚤售卖限制
-        if (_modConfigData.IsUnlockAllItemsSellLimit)
+        if (enableFunction.IsUnlockAllItemsSellLimit)
         {
             foreach (var (_, item) in databaseService.GetItems().Where(
                          x => x.Value.Properties != null && x.Value.Properties.CanSellOnRagfair == false))
@@ -241,58 +254,70 @@ public class EasyGameMod(
             }
         }
         // 所有存档的基础血量与能量, 水分
-        foreach (var (profileName, profileSides) in databaseService.GetProfileTemplates())
+        if (enableFunction.EnergyHydrationModify)
         {
-            // 血量修改
-            foreach (var side in new TemplateSide?[] { profileSides.Bear, profileSides.Usec })
+            foreach (var (profileName, profileSides) in databaseService.GetProfileTemplates())
             {
-                if (side?.Character?.Health?.BodyParts == null) continue;
-                foreach (var (_, bodyPartHealth) in side.Character.Health.BodyParts)
+                // 血量修改
+                foreach (var side in new TemplateSide?[] { profileSides.Bear, profileSides.Usec })
                 {
-                    if (bodyPartHealth?.Health?.Maximum != null)
+                    if (side?.Character?.Health?.BodyParts == null) continue;
+                    foreach (var (_, bodyPartHealth) in side.Character.Health.BodyParts)
                     {
-                        bodyPartHealth.Health.Maximum *= _modConfigData.HealthModify;
+                        if (bodyPartHealth?.Health?.Maximum != null)
+                        {
+                            bodyPartHealth.Health.Maximum *= _modConfigData.HealthModify;
+                        }
                     }
+                    if (side.Character.Health?.Hydration?.Maximum == null ||
+                        side.Character.Health?.Energy?.Maximum == null)
+                        continue;
+                    side.Character.Health.Energy.Maximum *= _modConfigData.EnergyHydrationModify;
+                    side.Character.Health.Hydration.Maximum *= _modConfigData.EnergyHydrationModify;
                 }
-                if (side.Character.Health?.Hydration?.Maximum == null ||
-                    side.Character.Health?.Energy?.Maximum == null)
-                    continue;
-                side.Character.Health.Energy.Maximum *= _modConfigData.EnergyHydrationModify;
-                side.Character.Health.Hydration.Maximum *= _modConfigData.EnergyHydrationModify;
+                if (_modConfigData.OutputResultLogOfAdjust) Info($"存档类型{profileName}修改完毕");
             }
-            if (_modConfigData.OutputResultLogOfAdjust) Info($"存档类型{profileName}修改完毕");
         }
         // 战局时长修改
-        var locations = databaseService.GetLocations();
-        foreach (var (mapName, location) in locations.GetDictionary())
+        if (enableFunction.RaidTimeModify)
         {
-            if (location.Base?.EscapeTimeLimit == null) continue;
-            location.Base.EscapeTimeLimit *= _modConfigData.RaidTimeModify;
-            location.Base.EscapeTimeLimit = Math.Max(1, location.Base?.EscapeTimeLimit ?? 0);
-            if (_modConfigData.OutputResultLogOfAdjust) Info($"地图{mapName}的对局时间已被修改至: {location.Base?.EscapeTimeLimit ?? -1}");
-        }
-        // 弹夹熟悉修改
-        Globals globals = databaseService.GetGlobals();
-        TryCatch("修改弹夹装弹/检查/卸弹速度", () =>
-        {
-            globals.Configuration.BaseCheckTime *= _modConfigData.CheckAmmoTimeModify;
-            globals.Configuration.BaseLoadTime *= _modConfigData.TakeInAmmoTimeModify;
-            globals.Configuration.BaseUnloadTime *= _modConfigData.TakeOutAmmoTimeModify;
-            if (_modConfigData.OutputResultLogOfAdjust) Info($"弹夹相关修改结果: 装弹({globals.Configuration.BaseLoadTime}s) 卸弹({globals.Configuration.BaseUnloadTime}s) 检查({globals.Configuration.BaseCheckTime}s)");
-            return Task.CompletedTask;
-        });
-        // 跳蚤挂单上限修改
-        TryCatch("跳蚤挂单上限修改", () =>
-        {
-            string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
-            foreach (var offer in globals.Configuration.RagFair.MaxActiveOfferCount)
+            var locations = databaseService.GetLocations();
+            foreach (var (mapName, location) in locations.GetDictionary())
             {
-                offer.Count *= _modConfigData.MaxActiveOfferCountModify;
-                result += $"\t{offer.CountForSpecialEditions} -> {offer.Count}";
+                if (location.Base?.EscapeTimeLimit == null) continue;
+                location.Base.EscapeTimeLimit *= _modConfigData.RaidTimeModify;
+                location.Base.EscapeTimeLimit = Math.Max(1, location.Base?.EscapeTimeLimit ?? 0);
+                if (_modConfigData.OutputResultLogOfAdjust) Info($"地图{mapName}的对局时间已被修改至: {location.Base?.EscapeTimeLimit ?? -1}");
             }
-            if (_modConfigData.OutputResultLogOfAdjust) Info(result);
-            return Task.CompletedTask;
-        });
+        }
+        // 弹夹数据修改
+        Globals globals = databaseService.GetGlobals();
+        if (enableFunction.AmmoTimeModify)
+        {
+            TryCatch("修改弹夹装弹/检查/卸弹速度", () =>
+            {
+                globals.Configuration.BaseCheckTime *= _modConfigData.CheckAmmoTimeModify;
+                globals.Configuration.BaseLoadTime *= _modConfigData.TakeInAmmoTimeModify;
+                globals.Configuration.BaseUnloadTime *= _modConfigData.TakeOutAmmoTimeModify;
+                if (_modConfigData.OutputResultLogOfAdjust) Info($"弹夹相关修改结果: 装弹({globals.Configuration.BaseLoadTime}s) 卸弹({globals.Configuration.BaseUnloadTime}s) 检查({globals.Configuration.BaseCheckTime}s)");
+                return Task.CompletedTask;
+            });
+        }
+        // 跳蚤挂单上限修改
+        if (enableFunction.MaxActiveOfferCountModify)
+        {
+            TryCatch("跳蚤挂单上限修改", () =>
+            {
+                string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
+                foreach (var offer in globals.Configuration.RagFair.MaxActiveOfferCount)
+                {
+                    offer.Count *= _modConfigData.MaxActiveOfferCountModify;
+                    result += $"\t{offer.CountForSpecialEditions} -> {offer.Count}";
+                }
+                if (_modConfigData.OutputResultLogOfAdjust) Info(result);
+                return Task.CompletedTask;
+            });
+        }
     }
     
     public void AdjustSimulator()
@@ -300,16 +325,20 @@ public class EasyGameMod(
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         Dictionary<MongoId,double> itemPrices = databaseService.GetTables().Templates.Prices;
         // 修改除了吗啡以外的药剂耐久
-        foreach (var (mongoId, templateItem) in itemTempaltes
-                     .Where(kvp => kvp.Value.Parent.ToString() == SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
+        if (_modConfigData?.EnableFunction == null) return;
+        if (_modConfigData.EnableFunction.StimulatorChange)
         {
-            if (templateItem.Properties != null)
+            foreach (var (mongoId, templateItem) in itemTempaltes
+                         .Where(kvp => kvp.Value.Parent.ToString() == SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
             {
-                if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
-                templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
-                templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
-                if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
-                itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
+                if (templateItem.Properties != null)
+                {
+                    if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
+                    templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
+                    templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
+                    if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
+                    itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
+                }
             }
         }
     }
@@ -318,8 +347,12 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         TemplateItem templateItem = itemTempaltes[ItemTpl.KEYCARD_TERRAGROUP_LABS_ACCESS];
-        if (templateItem.Properties != null)
-            templateItem.Properties.MaximumNumberOfUsage = 10;
+        if (_modConfigData?.EnableFunction == null) return;
+        if (_modConfigData.EnableFunction.LabAccessChange)
+        {
+            if (templateItem.Properties != null)
+                templateItem.Properties.MaximumNumberOfUsage = 10;
+        }
     }
     
     public void TryCatch(string name, Func<Task> func)
