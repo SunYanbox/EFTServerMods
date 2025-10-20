@@ -1,0 +1,52 @@
+{
+  "5f9d9b8e6f8b4a1e30000001": {
+    "_id": "5f9d9b8e6f8b4a1e30000001",
+    "_name": "物品包-无痕伸展8x8",
+    "_parent": "5795f317245977243854e041",
+    "_proto": "577e1c9d2459773cd707c525",
+    "_type": "Item",
+    "_props": {
+      "CanPutIntoDuringTheRaid": true,
+      "CanSellOnRagfair": true,
+      "Description": "来自一位霍格沃兹五年级插班生提供的魔法容器",
+      "ExamineExperience": 1000,
+      "ExamineTime": 5,
+      "ExaminedByDefault": false,
+      "Grids": [
+        {
+          "_id": "5f9d9b8e6f8b4a1e30000002",
+          "_name": "main",
+          "_parent": "5f9d9b8e6f8b4a1e30000001",
+          "_props": {
+            "cellsH": 8,
+            "cellsV": 8,
+            "filters": [
+              {
+                "ExcludedFilter": [],
+                "Filter": [
+                  "54009119af1c881c07000029"
+                ]
+              }
+            ],
+            "isSortingTable": false,
+            "maxCount": 0,
+            "maxWeight": 0,
+            "minCount": 0
+          },
+          "_proto": "55d329c24bdc2d892f8b4567"
+        }
+      ],
+      "Height": 1,
+      "LootExperience": 500,
+      "Name": "物品包-无痕伸展8x8",
+      "ShortName": "物品包-无痕伸展8x8",
+      "StackMaxSize": 1,
+      "Weight": 0.2,
+      "Width": 1
+    },
+    "defaultTrader": "5a7c2eca46aef81a7ca2145d",
+    "itemTplToClone": "5c093e3486f77430cb02e593",
+    "price": 666666,
+    "parentContainer": false
+  }
+}

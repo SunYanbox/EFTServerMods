@@ -24,7 +24,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "EasyGame";
     public override string Author { get; init; } = "Suntion";
     public override List<string>? Contributors { get; init; } = [];
-    public override SemanticVersioning.Version Version { get; init; } = new("0.2.5");
+    public override SemanticVersioning.Version Version { get; init; } = new("0.2.6");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
     
     
@@ -40,8 +40,9 @@ public static class Constant
 {
     public const string ModName = "EasyGameMod";
 
+    
     // 针剂基类
-    public const string SimBase = "5448f3a64bdc2d60728b456a";
+    public const string SimBase = "5448f3a64bdc2d60728b456a"; // BaseClasses.STIMULATOR
 
     // 新添针剂
     public const string SimMengGong = "5f9d9b8e6f8b4a1e3c7d5a2b";
@@ -49,30 +50,17 @@ public static class Constant
     public const string SimFuZhong = "5f9d9b8e6f8b4a1e3c7d5a2d";
     public const string SimJueDi = "5f9d9b8e6f8b4a1e3c7d5a2e";
     public const string SimYongJie = "5f9d9b8e6f8b4a1e3c7d5a30";
+    // 新模组物品
+    public const string Container8X8 = "5f9d9b8e6f8b4a1e30000001";
 
     // 商人ID
-    public static readonly MongoId TherapistId = new MongoId("54cb57776803fa99248b456e");
+    public static readonly MongoId TraderTherapistId = new MongoId("54cb57776803fa99248b456e");
+    public static readonly MongoId TraderMechanic = new MongoId("5a7c2eca46aef81a7ca2145d");
+    
+    // 卢布
     public static readonly MongoId RebId = new MongoId("5449016a4bdc2d6f028b456f");
     
     // 猛攻: 黄(Propital); 体力: 蓝(SJ6); 负重: MULE; 绝地: 红(SJ1); 永劫轮回: 紫(Zagustin)
-
-    public static readonly Dictionary<string, MongoId> ItemTplToClones = new Dictionary<string, MongoId>
-    {
-        { SimMengGong, ItemTpl.STIM_PROPITAL_REGENERATIVE_STIMULANT_INJECTOR },
-        { SimTiLi, ItemTpl.STIM_SJ6_TGLABS_COMBAT_STIMULANT_INJECTOR },
-        { SimFuZhong, ItemTpl.STIM_MULE_STIMULANT_INJECTOR },
-        { SimJueDi, ItemTpl.STIM_SJ1_TGLABS_COMBAT_STIMULANT_INJECTOR },
-        { SimYongJie, ItemTpl.STIM_ZAGUSTIN_HEMOSTATIC_DRUG_INJECTOR }
-    };
-
-    public static readonly Dictionary<string, double> ItemPrices = new Dictionary<string, double>
-    {
-        { SimMengGong, 26e4 },
-        { SimTiLi, 17e4 },
-        { SimFuZhong, 25e4 },
-        { SimJueDi, 35e4 },
-        { SimYongJie, 335503.36 }
-    };
 }
 
 public struct ModTask
@@ -89,9 +77,11 @@ public class EasyGameMod(
     ISptLogger<EasyGameMod> logger,
     DatabaseService databaseService,
     ConfigServer configServer,
+    ItemHelper itemHelper,
     CustomItemService customItemService) : IOnLoad
 {
     private ModConfigData? _modConfigData;
+    private Dictionary<MongoId, NewItem> _newStimulators = new();
     private Dictionary<MongoId, NewItem> _newItems = new();
     private Dictionary<string, List<Buff>> _newEffects = new();
 
@@ -101,22 +91,6 @@ public class EasyGameMod(
     public void Error(string msg) => logger.Error($"[{Constant.ModName}] {msg}");
 
     public void Register(ModTask modTask) => TasksDictionary.Add(modTask.Name, modTask);
-
-    // 我们通过调用 GetConfig<>()获取配置，并在菱形 <> 括弧内传递配置的 "类型"。
-    // 这些字段以 _ 开头，当你在代码中创建私有字段时，这是一个很好的约定。
-    // 它们也是只读的，因为你不应该覆盖配置，而只是编辑其中的值
-    private readonly BotConfig _botConfig = configServer.GetConfig<BotConfig>();
-    private readonly HideoutConfig _hideoutConfig = configServer.GetConfig<HideoutConfig>();
-    private readonly WeatherConfig _weatherConfig = configServer.GetConfig<WeatherConfig>();
-    private readonly AirdropConfig _airdropConfig = configServer.GetConfig<AirdropConfig>();
-    private readonly PmcChatResponse _pmcChatResponseConfig = configServer.GetConfig<PmcChatResponse>();
-    private readonly QuestConfig _questConfig = configServer.GetConfig<QuestConfig>();
-
-    private readonly PmcConfig _pmcConfig = configServer.GetConfig<PmcConfig>();
-
-    // private readonly BackupConfig _backupConfig = configServer.GetConfig<BackupConfig>();
-    private readonly InRaidConfig _raidConfig = configServer.GetConfig<InRaidConfig>();
-
 
     public Task OnLoad()
     {
@@ -132,21 +106,26 @@ public class EasyGameMod(
 
     public void LoadDataBase()
     {
-        var pathToMod = Path.Combine(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), "data");
+        var pathToModData = Path.Combine(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), "data");
 
         TryCatch("加载模组配置信息", () =>
         {
-            _modConfigData = modHelper.GetJsonDataFromFile<ModConfigData>(pathToMod, "config.json");
+            _modConfigData = modHelper.GetJsonDataFromFile<ModConfigData>(pathToModData, "config.json");
+            return Task.CompletedTask;
+        });
+        TryCatch("加载新针剂信息", () =>
+        {
+            _newStimulators = modHelper.GetJsonDataFromFile<Dictionary<MongoId, NewItem>>(pathToModData, "itemStimulators.json");
             return Task.CompletedTask;
         });
         TryCatch("加载新物品信息", () =>
         {
-            _newItems = modHelper.GetJsonDataFromFile<Dictionary<MongoId, NewItem>>(pathToMod, "items.json");
+            _newItems = modHelper.GetJsonDataFromFile<Dictionary<MongoId, NewItem>>(pathToModData, "items.json");
             return Task.CompletedTask;
         });
         TryCatch("加载新针剂效果信息", () =>
         {
-            _newEffects = modHelper.GetJsonDataFromFile<Dictionary<string, List<Buff>>>(pathToMod, "effects.json");
+            _newEffects = modHelper.GetJsonDataFromFile<Dictionary<string, List<Buff>>>(pathToModData, "effects.json");
             return Task.CompletedTask;
         });
     }
@@ -159,6 +138,13 @@ public class EasyGameMod(
             Order = 5000,
             Condition = () => _modConfigData?.EnableFunction?.NewStimulator ?? false,
             Name = "添加新的强力针剂",
+        });
+        Register(new ModTask
+        {
+            Callback = AddNewItems,
+            Order = 5000,
+            Condition = () => _modConfigData?.EnableFunction?.NewItems ?? false,
+            Name = "添加新的模组物品",
         });
         Register(new ModTask
         {
@@ -230,6 +216,20 @@ public class EasyGameMod(
             Condition = () => _modConfigData?.EnableFunction?.AdjustLabysAccess ?? false,
             Name = "调整迷宫访问卡次数",
         });
+        Register(new ModTask
+        {
+            Callback = AdjustAmmoStackMaxSize,
+            Order = 10,
+            Condition = () => _modConfigData?.EnableFunction?.AdjustAmmoStack ?? false,
+            Name = "修改所有弹药堆叠(Max规则)",
+        });
+        Register(new ModTask
+        {
+            Callback = AllExaminedByDefault,
+            Order = 10000,
+            Condition = () => _modConfigData?.EnableFunction?.AllExaminedByDefault ?? false,
+            Name = "默认检视所有物品",
+        });
     }
     
     public void HandleModTasks()
@@ -256,54 +256,80 @@ public class EasyGameMod(
             }).Wait();
         }
     }
-    
+
     /// <summary>
-    /// 添加新的强力针剂
+    /// 批量添加新物品
     /// </summary>
-    public void AddNewSimulatorItem()
+    /// <param name="items"></param>
+    protected void BatchAddNewItems(Dictionary<MongoId,NewItem> items)
     {
-        if (_modConfigData?.EnableFunction == null) return;
-        if (!_modConfigData.EnableFunction.NewStimulator) return;
-
-        TryCatch("注册针剂效果", () =>
+        Dictionary<MongoId,TemplateItem> itemTep = databaseService.GetTables().Templates.Items;
+        
+        List<HashSet<MongoId>> gridFilters = new List<HashSet<MongoId>>();
+        List<HashSet<MongoId>> excludedFilters = new List<HashSet<MongoId>>();
+        
+        foreach (var (_, container) in itemTep.Where(x => 
+                     x.Value.Properties?.Grids != null 
+                     && itemHelper.IsOfBaseclasses(x.Value.Id, [BaseClasses.SIMPLE_CONTAINER, BaseClasses.MOB_CONTAINER])))
         {
-            AddNewEffectForSimulator();
-            return Task.CompletedTask;
-        });
-
-        if (!databaseService.GetTables().Traders.TryGetValue(Constant.TherapistId, out var therapistTrader))
-        {
-            logger.Warning(
-                $"[EasyGame] 无法找到商人Therapist的实例, 请检查你的Therapist商人ID是否是{Constant.TherapistId}, 如果不是, 可能被意外修改");
+            if (container.Properties == null) continue;
+            if (container.Properties?.Grids == null) continue;
+            foreach (var grid in container.Properties.Grids)
+            {
+                if (grid.Properties == null) continue;
+                if (grid.Properties?.Filters == null) continue;
+                foreach (var gridFilter in grid.Properties.Filters)
+                {
+                    if (gridFilter.Filter != null) gridFilters.Add(gridFilter.Filter);
+                    if (gridFilter.ExcludedFilter != null) excludedFilters.Add(gridFilter.ExcludedFilter);
+                }
+            }
         }
+        
 
-        foreach (var (_, newItem) in _newItems)
+        foreach (var (_, newItem) in items)
         {
             if (string.IsNullOrEmpty(newItem.Id) || newItem.Props == null) continue;
+            // 新添物品
             NewItemFromCloneDetails details = new NewItemFromCloneDetails
             {
-                ItemTplToClone = Constant.ItemTplToClones[newItem.Id],
+                ItemTplToClone = newItem.ItemTplToClone,
                 ParentId = newItem.Parent,
                 NewId = newItem.Id,
-                FleaPriceRoubles = Constant.ItemPrices[newItem.Id],
-                HandbookPriceRoubles = Constant.ItemPrices[newItem.Id],
+                FleaPriceRoubles = newItem.Price,
+                HandbookPriceRoubles = newItem.Price,
                 Locales = new Dictionary<string, LocaleDetails>
                 {
                     {
                         "ch", new LocaleDetails
                         {
-                            Name = newItem.Props.Name,
-                            ShortName = newItem.Props.ShortName,
-                            Description = newItem.Props.Description
+                            Name = newItem.Props.Name ?? "w未知物品",
+                            ShortName = newItem.Props.ShortName ?? "未知物品",
+                            Description = newItem.Props.Description ?? "未知物品"
                         }
                     }
                 },
                 OverrideProperties = newItem.Props
             };
             customItemService.CreateItemFromClone(details);
-            if (therapistTrader != null)
+            if (!newItem.ParentContainer ?? false)
             {
-                TraderAssort assort = therapistTrader.Assort;
+                // 允许容器放这个物品
+                foreach (var gridFilter in gridFilters)
+                {
+                    gridFilter.Add(newItem.Id);
+                }
+                // 去掉限制
+                foreach (var excludedFilter in excludedFilters)
+                {
+                    if (excludedFilter.Contains(newItem.Id)) excludedFilter.Remove(newItem.Id);
+                    if (newItem.Parent != null) if (excludedFilter.Contains(newItem.Parent)) excludedFilter.Remove(newItem.Parent);
+                }
+            }
+            // 商人售卖
+            if (databaseService.GetTables().Traders.TryGetValue(newItem.DefaultTrader ?? new MongoId(), out var trader))
+            {
+                TraderAssort assort = trader.Assort;
                 Item item = new Item
                 {
                     Id = new MongoId(),
@@ -316,9 +342,35 @@ public class EasyGameMod(
                         StackObjectsCount = 9999999
                     }
                 };
-                AddItemToAssort(assort, item, Constant.ItemPrices[newItem.Id], 1);
+                AddItemToAssort(assort, item, newItem.Price ?? 404, 1);
+            }
+            else
+            {
+                Error($"物品{newItem.Name}({newItem.Id})的默认商人{newItem.DefaultTrader}不存在");
             }
         }
+    }
+    
+    /// <summary>
+    /// 添加新的强力针剂
+    /// </summary>
+    public void AddNewSimulatorItem()
+    {
+        TryCatch("注册针剂效果", () =>
+        {
+            AddNewEffectForSimulator();
+            return Task.CompletedTask;
+        });
+
+        BatchAddNewItems(_newStimulators);
+    }
+    
+    /// <summary>
+    /// 添加新的模组物品
+    /// </summary>
+    public void AddNewItems()
+    {
+        BatchAddNewItems(_newItems);
     }
 
     public void AddNewEffectForSimulator()
@@ -432,6 +484,7 @@ public class EasyGameMod(
         string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
         foreach (var offer in globals.Configuration.RagFair.MaxActiveOfferCount)
         {
+            offer.Count = Math.Max(1, offer.Count);
             offer.Count *= _modConfigData.MaxActiveOfferCountModify;
             result += $"\t{offer.CountForSpecialEditions} -> {offer.Count}";
         }
@@ -446,19 +499,45 @@ public class EasyGameMod(
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         Dictionary<MongoId,double> itemPrices = databaseService.GetTables().Templates.Prices;
         // 修改除了吗啡以外的药剂耐久
-        if (_modConfigData?.EnableFunction == null) return;
-        if (_modConfigData.EnableFunction.StimulatorChange)
+        foreach (var (mongoId, templateItem) in itemTempaltes
+            .Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
         {
-            foreach (var (mongoId, templateItem) in itemTempaltes
-                         .Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
+            if (templateItem.Properties != null)
+            {
+                if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
+                templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
+                templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
+                if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
+                itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
+            }
+        }
+    }
+
+    public void AllExaminedByDefault()
+    {
+        Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
+        foreach (var (mongoId, templateItem) in itemTempaltes
+                     .Where(kvp => kvp.Value.Properties?.ExaminedByDefault == false))
+        {
+            if (templateItem.Properties == null) continue;
+            templateItem.Properties.ExaminedByDefault = true;
+        }
+    }
+    
+    /// <summary>
+    /// 修改所有弹药堆叠
+    /// </summary>
+    public void AdjustAmmoStackMaxSize()
+    {
+        Dictionary<MongoId, TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
+        foreach (var tpl in itemHelper.GetItemTplsOfBaseType(BaseClasses.AMMO.ToString()))
+        {
+            if (itemTempaltes.TryGetValue(tpl, out var templateItem))
             {
                 if (templateItem.Properties != null)
                 {
-                    if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
-                    templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
-                    templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
-                    if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
-                    itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
+                    if (templateItem.Properties.StackMaxSize == null) continue;
+                    templateItem.Properties.StackMaxSize = Math.Max(_modConfigData?.AmmoStack ?? 0, templateItem.Properties.StackMaxSize ?? 1);
                 }
             }
         }
@@ -471,13 +550,9 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         TemplateItem templateItem = itemTempaltes[ItemTpl.KEYCARD_TERRAGROUP_LABS_ACCESS];
-        if (_modConfigData?.EnableFunction == null) return;
-        if (_modConfigData.EnableFunction.LabAccessChange)
-        {
-            if (templateItem.Properties != null)
-                templateItem.Properties.MaximumNumberOfUsage = 
-                    Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabsAccessMaximumNumberOfUsage ?? 1);
-        }
+        if (templateItem.Properties != null)
+            templateItem.Properties.MaximumNumberOfUsage = 
+                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabsAccessMaximumNumberOfUsage ?? 1);
     }
     
     /// <summary>
@@ -487,13 +562,10 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         TemplateItem templateItem = itemTempaltes[ItemTpl.KEYCARD_LABRYS_ACCESS];
-        if (_modConfigData?.EnableFunction == null) return;
-        if (_modConfigData.EnableFunction.LabAccessChange)
-        {
-            if (templateItem.Properties != null)
-                templateItem.Properties.MaximumNumberOfUsage = 
-                    Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabysAccessMaximumNumberOfUsage ?? 1);
-        }
+        if (templateItem.Properties != null)
+            templateItem.Properties.MaximumNumberOfUsage = 
+                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabysAccessMaximumNumberOfUsage ?? 1);
+        
     }
     
     public void TryCatch(string name, Func<Task> func)

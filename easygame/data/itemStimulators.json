@@ -1,0 +1,169 @@
+{
+  "5f9d9b8e6f8b4a1e3c7d5a2b": {
+    "_id": "5f9d9b8e6f8b4a1e3c7d5a2b",
+    "_name": "猛攻药剂",
+    "_parent": "5448f3a64bdc2d60728b456a",
+    "_proto": "544fb3f34bdc2d03748b456a",
+    "_type": "Item",
+    "_props": {
+      "Description": "你Daddy我曾经说过, 你在塔克夫只能算是一个萝~莉~",
+      "LootExperience": 500,
+      "MaxHpResource": 10,
+      "Name": "猛攻药剂",
+      "ShortName": "猛攻药剂",
+      "StimulatorBuffs": "BuffsSuntionSuperFighta2b",
+      "Weight": 0.4,
+      "effects_damage": {
+        "Pain": {
+          "delay": 1,
+          "duration": 900,
+          "fadeOut": 15
+        }
+      },
+      "effects_health": [],
+      "hpResourceRate": 0,
+      "medEffectType": "duringUse",
+      "medUseTime": 2
+    },
+    "defaultTrader": "54cb57776803fa99248b456e",
+    "itemTplToClone": "5c0e530286f7747fa1419862",
+    "price": 26e4,
+    "parentContainer": true
+  },
+  "5f9d9b8e6f8b4a1e3c7d5a2c": {
+    "_id": "5f9d9b8e6f8b4a1e3c7d5a2c",
+    "_name": "体力恢复药剂",
+    "_parent": "5448f3a64bdc2d60728b456a",
+    "_proto": "544fb3f34bdc2d03748b456a",
+    "_type": "Item",
+    "_props": {
+      "Description": "短时间内大量恢复体力",
+      "LootExperience": 500,
+      "MaxHpResource": 10,
+      "Name": "体力恢复药剂",
+      "ShortName": "体力恢复药剂",
+      "StimulatorBuffs": "BuffsSuntionElixirOfStrength",
+      "Weight": 0.4,
+      "effects_damage": {},
+      "effects_health": [],
+      "hpResourceRate": 0,
+      "medEffectType": "duringUse",
+      "medUseTime": 2
+    },
+    "defaultTrader": "54cb57776803fa99248b456e",
+    "itemTplToClone": "5c0e531d86f7747fa23f4d42",
+    "price": 17e4,
+    "parentContainer": true
+  },
+  "5f9d9b8e6f8b4a1e3c7d5a2d": {
+    "_id": "5f9d9b8e6f8b4a1e3c7d5a2d",
+    "_name": "超级负重药剂",
+    "_parent": "5448f3a64bdc2d60728b456a",
+    "_proto": "544fb3f34bdc2d03748b456a",
+    "_type": "Item",
+    "_props": {
+      "Description": "大幅提升负重能力, 但短时间内会损失大量生命值和体力, 随后缓慢恢复",
+      "LootExperience": 500,
+      "MaxHpResource": 10,
+      "Name": "超级负重药剂",
+      "ShortName": "超级负重药剂",
+      "StimulatorBuffs": "BuffsSuntionSuperWeightPotion",
+      "Weight": 0.4,
+      "effects_damage": {},
+      "effects_health": [],
+      "hpResourceRate": 0,
+      "medEffectType": "duringUse",
+      "medUseTime": 2
+    },
+    "defaultTrader": "54cb57776803fa99248b456e",
+    "itemTplToClone": "5ed51652f6c34d2cc26336a1",
+    "price": 25e4,
+    "parentContainer": true
+  },
+  "5f9d9b8e6f8b4a1e3c7d5a2e": {
+    "_id": "5f9d9b8e6f8b4a1e3c7d5a2e",
+    "_name": "绝地求生药剂",
+    "_parent": "5448f3a64bdc2d60728b456a",
+    "_proto": "544fb3f34bdc2d03748b456a",
+    "_type": "Item",
+    "_props": {
+      "Description": "短时间内清理负面状态, 恢复部分体力与吃喝, 恢复大量血量, 同时获得一个持续7s的90%减伤",
+      "LootExperience": 500,
+      "MaxHpResource": 10,
+      "Name": "绝地求生药剂",
+      "ShortName": "绝地求生药剂",
+      "StimulatorBuffs": "BuffsSuntionJediSurvivalist",
+      "Weight": 0.4,
+      "effects_damage": {
+        "Contusion": {
+          "delay": 0,
+          "duration": 30,
+          "fadeOut": 0
+        },
+        "Fracture": {
+          "delay": 0,
+          "duration": 0,
+          "fadeOut": 0
+        },
+        "Pain": {
+          "delay": 0,
+          "duration": 90,
+          "fadeOut": 5
+        },
+        "HeavyBleeding": {
+          "delay": 0,
+          "duration": 60,
+          "fadeOut": 0
+        },
+        "Intoxication": {
+          "delay": 0,
+          "duration": 60,
+          "fadeOut": 0
+        },
+        "LightBleeding": {
+          "delay": 0,
+          "duration": 60,
+          "fadeOut": 0
+        },
+        "RadExposure": {
+          "delay": 0,
+          "duration": 60,
+          "fadeOut": 0
+        }
+      },
+      "effects_health": [],
+      "hpResourceRate": 0,
+      "medEffectType": "duringUse",
+      "medUseTime": 2
+    },
+    "defaultTrader": "54cb57776803fa99248b456e",
+    "itemTplToClone": "5c0e531286f7747fa54205c2",
+    "price": 35e4,
+    "parentContainer": true
+  },
+  "5f9d9b8e6f8b4a1e3c7d5a30": {
+    "_id": "5f9d9b8e6f8b4a1e3c7d5a30",
+    "_name": "五五五药剂",
+    "_parent": "5448f3a64bdc2d60728b456a",
+    "_proto": "544fb3f34bdc2d03748b456a",
+    "_type": "Item",
+    "_props": {
+      "Description": "随着时间推移, 逐渐获得更强的力量, 直至■■■■■■; 90, 180, 360, 720s时分别提升效果一次, 720s后永久获得效果",
+      "LootExperience": 500,
+      "MaxHpResource": 10,
+      "Name": "五五五药剂",
+      "ShortName": "五五五药剂",
+      "StimulatorBuffs": "BuffsSuntionCycleOfReincarnation",
+      "Weight": 1,
+      "effects_damage": {},
+      "effects_health": [],
+      "hpResourceRate": 0,
+      "medEffectType": "duringUse",
+      "medUseTime": 2
+    },
+    "defaultTrader": "54cb57776803fa99248b456e",
+    "itemTplToClone": "5c0e533786f7747fa23f4d47",
+    "price": 335503.36,
+    "parentContainer": true
+  }
+}
