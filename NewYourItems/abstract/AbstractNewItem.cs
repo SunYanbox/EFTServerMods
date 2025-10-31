@@ -1,12 +1,12 @@
-using System.Reflection;
 using System.Text.Json.Serialization;
+using NewYourItems.infoClasses;
+using NewYourItems.NewItemClasses;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Mod;
 using SPTarkov.Server.Core.Services;
 
-namespace NewYourItems.records;
-
+namespace NewYourItems.@abstract;
 
 /// <summary>
 /// 抽象新物品基类 
@@ -30,7 +30,11 @@ namespace NewYourItems.records;
 /// - DoCustomValidation(): 执行自定义验证 (可选重载) 
 /// - DoCustomParameterValidation(): 执行自定义参数验证并记录错误信息 (可选重载) 
 /// - DoPropertyApplication(): 应用自定义属性覆盖 (必须重载) 
-/// 
+///
+[JsonDerivedType(typeof(AbstractNewItem), typeDiscriminator: "abstract")]
+[JsonDerivedType(typeof(NewItemCommon), typeDiscriminator: "common")]
+[JsonDerivedType(typeof(NewItemDrinkOrDrugs), typeDiscriminator: "drinkOrDrugs")]
+[JsonDerivedType(typeof(NewItemMedical), typeDiscriminator: "medical")]
 public abstract class AbstractNewItem
 {
     /// <summary>
@@ -403,6 +407,6 @@ public abstract class AbstractNewItem
         
     public override string ToString()
     {
-        return $"{GetType().Name} {{ baseInfo: {BaseInfo}, overrideProperties: {LocalLog.ToStringExcludeNulls(PropertyOverride) }}}";
+        return $"{GetType().Name} {{ baseInfo: {LocalLog.ToStringExcludeNulls(BaseInfo)}, overrideProperties: {LocalLog.ToStringExcludeNulls(PropertyOverride)}}}";
     }
 }

@@ -1,16 +1,22 @@
 using SPTarkov.Server.Core.Models.Common;
 
-namespace NewYourItems.records;
+namespace NewYourItems.@abstract;
 
 /*
  * 所有基类是Item的类型
  * "_parent": "54009119af1c881c07000029"
+ *
+ * 物品过滤器路径:
+ * `filters`, `StackSlots._props.filters`, `Slots.*._props.filters`, `Grids.*._props.filters`
  */
+
 
 public static class NyiType
 {
     public const string Common = "common"; // 通用/所有新物品的默认类型
-    public const string DrinkOrDrug = "drinkordrug";
+    public const string DrinkOrDrugs = "drinkOrDrugs";
+    public const string Medical = "medical";
+    public const string Ammo = "ammo";
 }
 
 public static class ItemRarityData
@@ -58,14 +64,32 @@ public static class ItemSoundData
     {
         { "零食声音", "food_snack" },
         { "罐头声音", "food_tin_can" },
-        { "通用声音", "generic" },
         { "果汁纸盒声音", "food_juice_carton" }
     };
+    
+    // 药品声音
+    public static readonly Dictionary<string, string> MedsSounds = new Dictionary<string, string>
+    {
+        { "医疗注射器", "med_stimulator" },
+        { "医疗绷带", "med_bandage" },
+        { "医疗药片", "med_pills" },
+        { "医疗急救包", "med_medkit" },
+    };
+    
+    public static readonly Dictionary<string, string> AmmoSounds = new Dictionary<string, string>
+    {
+        {"单发子弹音效", "ammo_singleround"},
+        {"霰弹枪音效", "ammo_shotgun"},
+        {"榴弹发射器音效", "ammo_launcher"}
+    };
 
-    // 所有允许的AllowKeys
     public static readonly HashSet<string> AllowKeys = new HashSet<string>
     {
-        "food_bottle", "food_juice_carton", "food_soda_can", "food_snack", "food_tin_can", "generic"
+        "food_bottle", "food_juice_carton", "food_soda_can", 
+        "food_snack", "food_tin_can", 
+        "med_stimulator", "med_bandage", "med_pills", "med_medkit",
+        "generic",
+        "ammo_singleround", "ammo_shotgun", "ammo_launcher"
     };
 
     /// <summary>
@@ -76,8 +100,11 @@ public static class ItemSoundData
     public static string? GetItemSoundKey(string Key)
     {
         if (AllowKeys.Contains(Key)) return Key;
+        if (Key == "通用声音") return "generic";
         if (FoodSounds.TryGetValue(Key, out var soundKey)) return soundKey;
         if (DrinkSounds.TryGetValue(Key, out soundKey)) return soundKey;
+        if (MedsSounds.TryGetValue(Key, out soundKey)) return soundKey;
+        if (AmmoSounds.TryGetValue(Key, out soundKey)) return soundKey;
         return null;
     }
 }

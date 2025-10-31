@@ -1,9 +1,8 @@
 using System.Text.Json.Serialization;
-using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Services;
 
-namespace NewYourItems.records;
+namespace NewYourItems.@abstract;
 
 /// <summary>
 /// 抽象信息基类
@@ -31,7 +30,7 @@ public abstract record AbstractInfo
     
     public override string ToString()
     {
-        return $"{GetType().Name} {LocalLog.ToStringExcludeNulls(this)}";
+        return $"{GetType().Name} {LocalLog.ToStringExcludeNulls(this).Replace("\n", "\\n")}";
     }
 
     /// <summary>

@@ -1,11 +1,8 @@
 using System.Text.Json.Serialization;
-using SPTarkov.Server.Core.Models.Eft.Common;
+using NewYourItems.@abstract;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
-using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Services;
 
-namespace NewYourItems.records;
-
+namespace NewYourItems.infoClasses;
 
 /// <summary>
 /// 新物品基础信息记录类
@@ -31,6 +28,7 @@ namespace NewYourItems.records;
 /// 
 /// - IsHadInit: 是否已进行过初始化与参数验证 (内部使用)
 /// </remarks>
+///
 public record BaseInfo: AbstractInfo
 {
     [JsonIgnore] public new static bool ShouldUpdateDatabaseService => false;
@@ -162,116 +160,35 @@ public record BaseInfo: AbstractInfo
     }
 }
 
-public record AttributeInfo: AbstractInfo
-{
-    [JsonIgnore] public new static bool ShouldUpdateDatabaseService => false;
-    [JsonPropertyName("Weight")]
-    public double? Weight { get; set; }
-    [JsonPropertyName("width")]
-    public int? Width { get; set; }
-    [JsonPropertyName("height")]
-    public int? Height { get; set; }
-    [JsonPropertyName("RarityPvE")]
-    public string? RarityPvE { get; set; }
-    [JsonPropertyName("DiscardLimit")]
-    public double? DiscardLimit { get; set; }
-    /// <summary>
-    /// 默认为"generic"
-    /// </summary>
-    [JsonPropertyName("ItemSound")]
-    public string? ItemSound { get; set; }
-    // 检视与经验相关
-    [JsonPropertyName("StackMaxSize")]
-    public int? StackMaxSize { get; set; } = 1;
-    
-    [JsonPropertyName("ExaminedByDefault")]
-    public bool? ExaminedByDefault { get; set; } = true;
-    
-    [JsonPropertyName("ExamineTime")]
-    public double? ExamineTime { get; set; }
-    
-    [JsonPropertyName("LootExperience")]
-    public int? LootExperience { get; set; }
-    
-    [JsonPropertyName("ExamineExperience")]
-    public int? ExamineExperience { get; set; }
 
-    public override void UpdateProperties(TemplateItemProperties properties)
-    {
-        if (Weight != null && Weight >= 0) properties.Weight = Weight;
-        if (Width != null && Width >= 0) properties.Width = Width;
-        if (Height != null && Height >= 0) properties.Height = Height;
-        if (DiscardLimit != null) properties.DiscardLimit = DiscardLimit;
-        if (ExamineTime != null) properties.ExamineTime = ExamineTime;
-        if (LootExperience != null) properties.LootExperience = LootExperience;
-        if (ExamineExperience != null) properties.ExamineExperience = ExamineExperience;
-        if (StackMaxSize != null) properties.StackMaxSize = StackMaxSize;
-        if (ExaminedByDefault != null) properties.ExaminedByDefault = ExaminedByDefault;
-        if (RarityPvE != null)
-        {
-            string? rarity = ItemRarityData.GetRarityKey(RarityPvE);
-            if (!string.IsNullOrEmpty(rarity)) properties.RarityPvE = rarity;
-        }
-        if (ItemSound != null)
-        {
-            string? itemSound = ItemSoundData.GetItemSoundKey(ItemSound);
-            if (!string.IsNullOrEmpty(itemSound)) properties.ItemSound = itemSound;
-        }
-    }
-}
-
-public record BuffsInfo : AbstractInfo
-{
-    [JsonIgnore] public new static bool ShouldUpdateDatabaseService => true;
-    
-    [JsonPropertyName("stimulatorBuffs")]
-    public string? StimulatorBuffs { get; set; }
-    [JsonPropertyName("buffs")]
-    public List<Buff>? Buffs {get; set;}
-    
-    public override void UpdateProperties(TemplateItemProperties properties)
-    {
-        if (!string.IsNullOrEmpty(StimulatorBuffs))
-            properties.StimulatorBuffs = StimulatorBuffs;
-    }
-    
-    public override void UpdateDatabaseService(DatabaseService databaseService)
-    {
-        var buffs = databaseService.GetTables().Globals.Configuration.Health.Effects.Stimulator.Buffs;
-        if (StimulatorBuffs != null && Buffs != null)
-        {
-            buffs[StimulatorBuffs] = Buffs;
-        }
-    }
-}
-
-public record DrinkDrugInfo: AbstractInfo
-{
-    [JsonIgnore] public new static bool ShouldUpdateDatabaseService => false;
-    [JsonPropertyName("foodUseTime")]
-    public double? FoodUseTime { get; set; }
-    [JsonPropertyName("hydration")]
-    public double? Hydration { get; set; }
-    [JsonPropertyName("energy")]
-    public double? Energy { get; set; }
-    [JsonPropertyName("maxResource")]
-    public int? MaxResource { get; set; }
-
-    public Dictionary<HealthFactor, EffectsHealthProperties> GetEffectsHealth()
-    {
-        return new Dictionary<HealthFactor, EffectsHealthProperties>
-        {
-            { HealthFactor.Energy, new EffectsHealthProperties { Value = Energy } },
-            { HealthFactor.Hydration, new EffectsHealthProperties { Value = Hydration } },
-        };
-    }
-
-    public override void UpdateProperties(TemplateItemProperties properties)
-    {
-        if (MaxResource != null && MaxResource >= 1) properties.MaxResource = MaxResource;
-        if (FoodUseTime != null && FoodUseTime >= 0) properties.FoodUseTime = FoodUseTime;
-        if (Hydration != null || Energy != null)
-            properties.EffectsHealth = GetEffectsHealth();
-    }
-
-}
+/*
+  "5b47574386f77428ca22b2ed": "能源物品",
+  "5b47574386f77428ca22b2ee": "建筑材料",
+  "5b47574386f77428ca22b2ef": "电子产品",
+  "5b47574386f77428ca22b2f0": "日常用品",
+  "5b47574386f77428ca22b2f1": "贵重物品",
+  "5b47574386f77428ca22b2f2": "易燃物品",
+  "5b47574386f77428ca22b2f3": "医疗用品",
+  "5b47574386f77428ca22b2f4": "其他",
+  "5b47574386f77428ca22b2f6": "工具",
+  "5b47574386f77428ca22b32f": "面部装备",
+  "5b47574386f77428ca22b330": "头部装备",
+  "5b47574386f77428ca22b331": "眼部装备",
+  "5b47574386f77428ca22b335": "饮品",
+  "5b47574386f77428ca22b336": "食物",
+  "5b47574386f77428ca22b337": "药品",
+  "5b47574386f77428ca22b338": "急救包",
+  "5b47574386f77428ca22b339": "创伤处理",
+  "5b47574386f77428ca22b33a": "注射器",
+  "5b47574386f77428ca22b33b": "子弹",
+  "5b47574386f77428ca22b33c": "弹药包",
+  "5b47574386f77428ca22b33e": "交换用物品",
+  "5b47574386f77428ca22b33f": "装备",
+  "5b47574386f77428ca22b340": "给养",
+  "5b47574386f77428ca22b341": "情报物品",
+  "5b47574386f77428ca22b342": "钥匙",
+  "5b47574386f77428ca22b343": "地图",
+  "5b47574386f77428ca22b344": "医疗物品",
+  "5b47574386f77428ca22b345": "特殊装备",
+  "5b47574386f77428ca22b346": "弹药",
+ */

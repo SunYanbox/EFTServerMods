@@ -1,4 +1,6 @@
-using NewYourItems.records;
+using System.Text.Json;
+using NewYourItems.@abstract;
+using NewYourItems.NewItemClasses;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Models.Utils;
@@ -21,8 +23,20 @@ public class DataLoader(
     /// <summary>
     /// 通用/默认创建物品接口
     /// </summary>
-    public Dictionary<string, NewItemCommon> CommonNewItems = new Dictionary<string, NewItemCommon>();
-    
+    public Dictionary<string, NewItemCommon> NewItemCommon = new Dictionary<string, NewItemCommon>();
+    /// <summary>
+    /// 食物饮品创建物品接口
+    /// </summary>
+    public Dictionary<string, NewItemDrinkOrDrugs> NewItemDrinkOrDrugs = new Dictionary<string, NewItemDrinkOrDrugs>();
+    /// <summary>
+    /// 药品创建
+    /// </summary>
+    public Dictionary<string, NewItemMedical> NewItemMedical = new Dictionary<string, NewItemMedical>();
+    /// <summary>
+    /// 弹药
+    /// </summary>
+    public Dictionary<string, NewItemAmmo> NewItemAmmo = new Dictionary<string, NewItemAmmo>();
+
     public Task OnLoad()
     {
         AbstractInfo.LocalLog ??= localLog;
@@ -45,19 +59,22 @@ public class DataLoader(
         {
             try
             {
-                NewItemCommon? newItemBase = jsonUtil.DeserializeFromFile<NewItemCommon>(file);
+                NewItemCommon? newItemBase = DeserializeBasedOnType(File.ReadAllText(file));
                 if (newItemBase == null) throw new Exception("反序列化的结果为null");
                 if (newItemBase.BaseInfo == null) throw new Exception("反序列化后获取不到baseInfo字段");
                 newItemBase.BaseInfo.ItemPath = file;
                 newItemBase.ItemPath = file;
                 newItemBase.Verify();
                 localLog.LocalLogMsg(LocalLogType.Debug, $"已加载新物品 Id{newItemBase.BaseInfo.Id}({newItemBase.BaseInfo.Name}, @{newItemBase.BaseInfo.Author}) \t {newItemBase.BaseInfo.License} \n\t > Path = {file}");
-                
+                // 类型转换
                 switch (newItemBase.BaseInfo.Type)
                 {
-                    case NyiType.Common: CommonNewItems.Add(file, newItemBase); break;
+                    case NyiType.Common: NewItemCommon.Add(file, newItemBase as NewItemCommon); break;
+                    case NyiType.DrinkOrDrugs: NewItemDrinkOrDrugs.Add(file, newItemBase as NewItemDrinkOrDrugs); break;
+                    case NyiType.Medical: NewItemMedical.Add(file, newItemBase as NewItemMedical); break;
+                    case NyiType.Ammo: NewItemAmmo.Add(file, newItemBase as NewItemAmmo); break;
                     default: 
-                        localLog.LocalLogMsg(LocalLogType.Error, $"在分类新物品数据\"{file}\"类型时出现问题: `baseInfo.type` 不存在或不合法 \n\t > Path = {file}");
+                        localLog.LocalLogMsg(LocalLogType.Error, $"在分类新物品数据\"{file}\"类型时出现问题: `baseInfo.type` (当前为: {newItemBase.BaseInfo.Type}) 不存在或不合法 \n\t > Path = {file}");
                         break;
                 }
             }
@@ -70,6 +87,22 @@ public class DataLoader(
         localLog.LocalLogMsg(LocalLogType.Info, $"已处理{foundFiles.Count}条nyi文件");
         
         return Task.CompletedTask;
+    }
+    
+    // 根据 TypeIdentifier 在反序列化时直接创建正确的类型
+    private static NewItemCommon? DeserializeBasedOnType(string json)
+    {
+        using JsonDocument doc = JsonDocument.Parse(json);
+        string typeIdentifier = doc.RootElement.GetProperty("$type").GetString();
+    
+        return typeIdentifier switch
+        {
+            NyiType.Common => JsonSerializer.Deserialize<NewItemCommon>(json),
+            NyiType.DrinkOrDrugs => JsonSerializer.Deserialize<NewItemDrinkOrDrugs>(json),
+            NyiType.Medical => JsonSerializer.Deserialize<NewItemMedical>(json),
+            NyiType.Ammo => JsonSerializer.Deserialize<NewItemAmmo>(json),
+            _ => JsonSerializer.Deserialize<NewItemCommon>(json)
+        };
     }
     
     /// <summary>
