@@ -33,4 +33,16 @@ public abstract record AbstractInfo
     {
         return $"{GetType().Name} {LocalLog.ToStringExcludeNulls(this)}";
     }
+
+    /// <summary>
+    /// 封装更新TemplateItemProperties和DatabaseService的逻辑
+    /// </summary>
+    /// <param name="properties"></param>
+    /// <param name="databaseService"></param>
+    public void Update(TemplateItemProperties properties, DatabaseService? databaseService = null)
+    {
+        UpdateProperties(properties);
+        if (ShouldUpdateDatabaseService && databaseService != null)
+            UpdateDatabaseService(databaseService);
+    }
 }

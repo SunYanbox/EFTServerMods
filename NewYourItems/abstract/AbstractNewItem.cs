@@ -171,10 +171,8 @@ public abstract class AbstractNewItem
         if (PropertyOverride == null) PropertyOverride = new TemplateItemProperties();
         if (BaseInfo != null)
         {
-            BaseInfo.UpdateProperties(PropertyOverride);
-            if (BaseInfo.ShouldUpdateDatabaseService && DatabaseService != null)
-                BaseInfo.UpdateDatabaseService(DatabaseService);
-            DoPropertyApplication(PropertyOverride);
+            BaseInfo.Update(PropertyOverride, DatabaseService);
+            DoPropertyApplication(PropertyOverride, DatabaseService);
         }
     }
     
@@ -196,7 +194,7 @@ public abstract class AbstractNewItem
     /// 应用自定义属性覆盖 **必须重载**
     /// 应当只修改PropertyApply的内容, 对其他属性应当是只读的
     /// </summary>
-    protected abstract void DoPropertyApplication(TemplateItemProperties props);
+    protected abstract void DoPropertyApplication(TemplateItemProperties props, DatabaseService? databaseService = null);
     
     
     /// <summary>

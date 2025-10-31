@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
+using SPTarkov.Server.Core.Services;
 
 namespace NewYourItems.records;
 
@@ -15,9 +16,11 @@ public class NewItemDrinkOrDrugs: NewItemCommon
     [JsonPropertyName("drinkDrugInfo")]
     public DrinkDrugInfo? DrinkDrugInfo { get; set; }
     
-    protected override void DoPropertyApplication(TemplateItemProperties props)
+    protected override void DoPropertyApplication(TemplateItemProperties props, DatabaseService? databaseService = null)
     {
-        throw new NotImplementedException();
+        AttributeInfo?.Update(props, databaseService);
+        BuffsInfo?.Update(props, databaseService);
+        DrinkDrugInfo?.Update(props, databaseService);
     }
 
     protected override void DoCustomParameterValidation(Dictionary<string, string> oldResults)
@@ -25,10 +28,11 @@ public class NewItemDrinkOrDrugs: NewItemCommon
         BuffsInfo ??= new BuffsInfo();
         if (BuffsInfo.StimulatorBuffs == null)
             BuffsInfo.StimulatorBuffs = "";
+        if (DrinkDrugInfo == null) oldResults["DrinkDrugInfo"] = "DrinkDrugInfo属性不存在, 无法正确生成食物与饮品数据";
     }
 
     protected override bool DoCustomValidation()
     {
-        return base.DoCustomValidation();
+        return base.DoCustomValidation() && DrinkDrugInfo != null;
     }
 }
