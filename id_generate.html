@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongoDB ObjectId 生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+        
+        .generator {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1.1rem;
+            outline: none;
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            background: #4CAF50;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .output {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .objectid {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3rem;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            word-break: break-all;
+        }
+        
+        .timestamp {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .copy-btn {
+            background: #2196F3;
+        }
+        
+        .copy-btn:hover {
+            background: #0b7dda;
+        }
+        
+        .history {
+            margin-top: 30px;
+        }
+        
+        .history h3 {
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+        
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .history-id {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .history-time {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MongoDB ObjectId 生成器</h1>
+        <p class="subtitle">生成符合MongoDB规范的ObjectId</p>
+        
+        <div class="generator">
+            <div class="input-group">
+                <input type="number" id="count" placeholder="输入要生成的ObjectId数量 (默认: 1)" min="1" max="100">
+                <button id="generate">生成 ObjectId</button>
+            </div>
+            
+            <div class="output">
+                <div id="results"></div>
+                <div class="actions">
+                    <button id="copy" class="copy-btn">复制到剪贴板</button>
+                    <button id="clear">清空结果</button>
+                </div>
+            </div>
+            
+            <div class="history">
+                <h3>生成历史</h3>
+                <div class="history-list" id="history"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MongoDB ObjectId 生成器类
+        class ObjectIdGenerator {
+            constructor() {
+                // 初始化计数器（3字节，0-16777215）
+                this.counter = Math.floor(Math.random() * 0xffffff);
+                // 生成5字节的随机值作为机器标识
+                this.machineId = this.generateMachineId();
+            }
+            
+            // 生成5字节的机器标识
+            generateMachineId() {
+                const buffer = new ArrayBuffer(5);
+                const view = new DataView(buffer);
+                const randomValues = new Uint8Array(5);
+                crypto.getRandomValues(randomValues);
+                
+                for (let i = 0; i < 5; i++) {
+                    view.setUint8(i, randomValues[i]);
+                }
+                
+                return buffer;
+            }
+            
+            // 生成单个ObjectId
+            generate() {
+                // 4字节时间戳
+                const timestamp = Math.floor(Date.now() / 1000);
+                
+                // 5字节机器标识
+                const machineView = new DataView(this.machineId);
+                
+                // 3字节计数器
+                this.counter = (this.counter + 1) % 0xffffff;
+                
+                // 创建12字节的缓冲区
+                const buffer = new ArrayBuffer(12);
+                const view = new DataView(buffer);
+                
+                // 写入时间戳（4字节，大端序）
+                view.setUint32(0, timestamp, false);
+                
+                // 写入机器标识（5字节）
+                for (let i = 0; i < 5; i++) {
+                    view.setUint8(4 + i, machineView.getUint8(i));
+                }
+                
+                // 写入计数器（3字节，大端序）
+                view.setUint8(9, (this.counter >>> 16) & 0xff);
+                view.setUint8(10, (this.counter >>> 8) & 0xff);
+                view.setUint8(11, this.counter & 0xff);
+                
+                // 转换为16进制字符串
+                return this.toHexString(buffer);
+            }
+            
+            // 将ArrayBuffer转换为16进制字符串
+            toHexString(buffer) {
+                const byteArray = new Uint8Array(buffer);
+                let hexString = '';
+                
+                for (let i = 0; i < byteArray.length; i++) {
+                    const hex = byteArray[i].toString(16).padStart(2, '0');
+                    hexString += hex;
+                }
+                
+                return hexString;
+            }
+            
+            // 从ObjectId解析时间戳
+            static getTimestamp(objectId) {
+                if (objectId.length !== 24) {
+                    throw new Error('Invalid ObjectId');
+                }
+                
+                const timestampHex = objectId.substring(0, 8);
+                const timestamp = parseInt(timestampHex, 16);
+                return new Date(timestamp * 1000);
+            }
+        }
+        
+        // 初始化生成器
+        const generator = new ObjectIdGenerator();
+        
+        // DOM 元素
+        const countInput = document.getElementById('count');
+        const generateBtn = document.getElementById('generate');
+        const copyBtn = document.getElementById('copy');
+        const clearBtn = document.getElementById('clear');
+        const resultsDiv = document.getElementById('results');
+        const historyDiv = document.getElementById('history');
+        
+        // 生成历史记录
+        let history = [];
+        
+        // 生成ObjectId
+        generateBtn.addEventListener('click', () => {
+            const count = parseInt(countInput.value) || 1;
+            const maxCount = Math.min(count, 100);
+            
+            resultsDiv.innerHTML = '';
+            
+            for (let i = 0; i < maxCount; i++) {
+                const objectId = generator.generate();
+                const timestamp = ObjectIdGenerator.getTimestamp(objectId);
+                
+                const objectIdDiv = document.createElement('div');
+                objectIdDiv.className = 'objectid';
+                objectIdDiv.textContent = objectId;
+                
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'timestamp';
+                timestampDiv.textContent = `创建时间: ${timestamp.toLocaleString()}`;
+                
+                resultsDiv.appendChild(objectIdDiv);
+                resultsDiv.appendChild(timestampDiv);
+                
+                // 添加到历史记录
+                history.unshift({
+                    id: objectId,
+                    time: timestamp
+                });
+                
+                // 限制历史记录数量
+                if (history.length > 10) {
+                    history.pop();
+                }
+            }
+            
+            updateHistory();
+        });
+        
+        // 复制到剪贴板
+        copyBtn.addEventListener('click', () => {
+            const objectIds = Array.from(resultsDiv.querySelectorAll('.objectid'))
+                .map(el => el.textContent)
+                .join('\n');
+            
+            if (objectIds) {
+                navigator.clipboard.writeText(objectIds)
+                    .then(() => {
+                        alert('ObjectId 已复制到剪贴板！');
+                    })
+                    .catch(err => {
+                        console.error('复制失败: ', err);
+                    });
+            }
+        });
+        
+        // 清空结果
+        clearBtn.addEventListener('click', () => {
+            resultsDiv.innerHTML = '';
+        });
+        
+        // 更新历史记录显示
+        function updateHistory() {
+            historyDiv.innerHTML = '';
+            
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                const idSpan = document.createElement('span');
+                idSpan.className = 'history-id';
+                idSpan.textContent = item.id;
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'history-time';
+                timeSpan.textContent = item.time.toLocaleTimeString();
+                
+                historyItem.appendChild(idSpan);
+                historyItem.appendChild(timeSpan);
+                historyDiv.appendChild(historyItem);
+            });
+        }
+        
+        // 初始生成一个ObjectId
+        generateBtn.click();
+    </script>
+</body>
+</html>
