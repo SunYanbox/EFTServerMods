@@ -534,9 +534,8 @@ public class EasyGameMod(
         {
             if (itemTempaltes.TryGetValue(tpl, out var templateItem))
             {
-                if (templateItem.Properties != null)
+                if (templateItem.Properties != null && templateItem.Properties.StackMaxSize != null)
                 {
-                    if (templateItem.Properties.StackMaxSize == null) continue;
                     templateItem.Properties.StackMaxSize = Math.Max(_modConfigData?.AmmoStack ?? 0, templateItem.Properties.StackMaxSize ?? 1);
                 }
             }
