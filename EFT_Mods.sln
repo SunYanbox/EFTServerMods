@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "easygame", "easygame\easyga
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaidRecord", "RaidRecord\RaidRecord.csproj", "{46B22360-6C96-4A93-8083-B445DAB04CA4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewYourItems", "NewYourItems\NewYourItems.csproj", "{E5EB2FDD-7222-4C2B-BE98-4B8A0DFFD400}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{46B22360-6C96-4A93-8083-B445DAB04CA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46B22360-6C96-4A93-8083-B445DAB04CA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46B22360-6C96-4A93-8083-B445DAB04CA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5EB2FDD-7222-4C2B-BE98-4B8A0DFFD400}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5EB2FDD-7222-4C2B-BE98-4B8A0DFFD400}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5EB2FDD-7222-4C2B-BE98-4B8A0DFFD400}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5EB2FDD-7222-4C2B-BE98-4B8A0DFFD400}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

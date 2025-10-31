@@ -1,0 +1,17 @@
+{
+  "baseInfo": {
+    "id": "6900c8e93ea87766292c1c83",
+    "name": "测试-握把1",
+    "author": "Suntion",
+    "parentId": "55818a684bdc2ddd698b456d",
+    "cloneId": "637784c5f7b3f4ac1a0d1a9a",
+    "handbookParentId": "55818a684bdc2ddd698b456d",
+    "price": 5000,
+
+    "traderId": "54cb57776803fa99248b456e"
+  },
+  "propertyOverride": {
+    "StackMaxSize": 5,
+    "Weight": 0.03
+  }
+}
