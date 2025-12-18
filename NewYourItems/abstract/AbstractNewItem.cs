@@ -33,7 +33,7 @@ namespace NewYourItems.@abstract;
 ///
 [JsonDerivedType(typeof(AbstractNewItem), typeDiscriminator: "abstract")]
 [JsonDerivedType(typeof(NewItemCommon), typeDiscriminator: "common")]
-[JsonDerivedType(typeof(NewItemDrinkOrDrugs), typeDiscriminator: "drinkOrDrugs")]
+[JsonDerivedType(typeof(NewItemDrinkOrFood), typeDiscriminator: "drinkOrFood")]
 [JsonDerivedType(typeof(NewItemMedical), typeDiscriminator: "medical")]
 public abstract class AbstractNewItem
 {

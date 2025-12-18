@@ -30,5 +30,7 @@ public record BuffsInfo : AbstractInfo
             if (buffs.ContainsKey(StimulatorBuffs)) return;
             buffs[StimulatorBuffs] = Buffs;
         }
+        if (StimulatorBuffs != null && Buffs == null && !buffs.ContainsKey(StimulatorBuffs)) LocalLog?.LocalLogMsg(
+            LocalLogType.Warn, $"检测到效果字段赋值了`stimulatorBuffs`, 但没有提供`buffs`, 并且没有已被注册的`stimulatorBuffs`({StimulatorBuffs}), 请检查你的新物品文件");
     }
 }

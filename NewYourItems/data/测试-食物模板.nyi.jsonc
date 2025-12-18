@@ -1,19 +1,19 @@
 {
-  "$type": "drinkOrDrugs",
+  "$type": "drinkOrFood",
   "baseInfo": {
-    "id": "6900c8e93ea877662a000001",
-    "type": "drinkOrDrugs",
-    "name": "饮品模板",
+    "id": "6900c8e93ea877662a000000",
+    "type": "drinkOrFood",
+    "name": "食物模板",
     "description": null,
     "author": "Suntion",
     "license": "CC-BY-SA",
     "order": 0,
-    "parentId": "5448e8d64bdc2dce718b4568",
-    "handbookParentId": "5b47574386f77428ca22b335",
-    "cloneId": "5448fee04bdc2dbc018b4567",
+    "parentId": "5448e8d04bdc2ddf718b4569",
+    "handbookParentId": "5b47574386f77428ca22b336",
+    "cloneId": "5448ff904bdc2d6f028b456e",
     
     "traderId": "54cb57776803fa99248b456e",
-    "price": 3500,
+    "price": 5000,
     "prefab": null,
     "usePrefab": null,
     "CanSellOnRagfair": true
@@ -24,7 +24,7 @@
     "height": 3,
     "rarityPvE": "Common",
     "discardLimit": null,
-    "itemSound": "food_bottle",
+    "itemSound": "food_snack",
     "stackMaxSize": null,
     "examinedByDefault": true,
     "examineTime": 2,
@@ -35,10 +35,10 @@
     "stimulatorBuffs": "",
     "buffs": null
   },
-  "drinkDrugInfo": {
-    "foodUseTime": 3,
+  "drinkFoodInfo": {
+    "foodUseTime": 5,
     "hydration": 33,
-    "energy": null,
-    "maxResource": 99
+    "energy": 33,
+    "maxResource": 20
   }
 }

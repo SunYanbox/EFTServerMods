@@ -13,7 +13,7 @@ public class NewItemMedical: NewItemCommon
     
     protected override bool DoCustomValidation()
     {
-        return true;
+        return base.DoCustomValidation();
     }
 
     protected override void DoCustomParameterValidation(Dictionary<string, string> oldResults)

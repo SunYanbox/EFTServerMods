@@ -20,6 +20,7 @@ public class DataLoader(
     ): IOnLoad
 {
     private static LocalLog? _localLog;
+    private static JsonUtil? _jsonUtil;
     /// <summary>
     /// 通用/默认创建物品接口
     /// </summary>
@@ -27,7 +28,7 @@ public class DataLoader(
     /// <summary>
     /// 食物饮品创建物品接口
     /// </summary>
-    public Dictionary<string, NewItemDrinkOrDrugs> NewItemDrinkOrDrugs = new Dictionary<string, NewItemDrinkOrDrugs>();
+    public Dictionary<string, NewItemDrinkOrFood> NewItemDrinkOrDrugs = new Dictionary<string, NewItemDrinkOrFood>();
     /// <summary>
     /// 药品创建
     /// </summary>
@@ -42,6 +43,7 @@ public class DataLoader(
         AbstractInfo.LocalLog ??= localLog;
         AbstractNewItem.LocalLog ??= localLog;
         AbstractNewItem.DatabaseService ??= databaseService;
+        _jsonUtil  ??= jsonUtil;
         
         _localLog = localLog;
         if (localLog.DataFolderPath == null)
@@ -70,7 +72,7 @@ public class DataLoader(
                 switch (newItemBase.BaseInfo.Type)
                 {
                     case NyiType.Common: NewItemCommon.Add(file, newItemBase as NewItemCommon); break;
-                    case NyiType.DrinkOrDrugs: NewItemDrinkOrDrugs.Add(file, newItemBase as NewItemDrinkOrDrugs); break;
+                    case NyiType.DrinkOrFood: NewItemDrinkOrDrugs.Add(file, newItemBase as NewItemDrinkOrFood); break;
                     case NyiType.Medical: NewItemMedical.Add(file, newItemBase as NewItemMedical); break;
                     case NyiType.Ammo: NewItemAmmo.Add(file, newItemBase as NewItemAmmo); break;
                     default: 
@@ -94,14 +96,18 @@ public class DataLoader(
     {
         using JsonDocument doc = JsonDocument.Parse(json);
         string typeIdentifier = doc.RootElement.GetProperty("$type").GetString();
-    
+        if (_jsonUtil == null)
+        {
+            _localLog?.LocalLogMsg(LocalLogType.Warn, $"解析数据时出现问题: _jsonUtil未初始化");
+            return null;
+        }
         return typeIdentifier switch
         {
-            NyiType.Common => JsonSerializer.Deserialize<NewItemCommon>(json),
-            NyiType.DrinkOrDrugs => JsonSerializer.Deserialize<NewItemDrinkOrDrugs>(json),
-            NyiType.Medical => JsonSerializer.Deserialize<NewItemMedical>(json),
-            NyiType.Ammo => JsonSerializer.Deserialize<NewItemAmmo>(json),
-            _ => JsonSerializer.Deserialize<NewItemCommon>(json)
+            NyiType.Common => _jsonUtil.Deserialize<NewItemCommon>(json),
+            NyiType.DrinkOrFood => _jsonUtil.Deserialize<NewItemDrinkOrFood>(json),
+            NyiType.Medical => _jsonUtil.Deserialize<NewItemMedical>(json),
+            NyiType.Ammo => _jsonUtil.Deserialize<NewItemAmmo>(json),
+            _ => _jsonUtil.Deserialize<NewItemCommon>(json)
         };
     }
     
@@ -126,7 +132,7 @@ public class DataLoader(
             // 遍历当前目录的所有文件
             foreach (string file in Directory.GetFiles(path))
             {
-                if (file.EndsWith(".nyi") || file.EndsWith(".nyi.json"))
+                if (file.EndsWith(".nyi") || file.EndsWith(".nyi.json") || file.EndsWith(".nyi.jsonc"))
                 {
                     results.Add(file);
                 }

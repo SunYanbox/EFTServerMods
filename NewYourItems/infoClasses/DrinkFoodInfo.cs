@@ -6,7 +6,7 @@ using SPTarkov.Server.Core.Models.Enums;
 namespace NewYourItems.infoClasses;
 
 
-public record DrinkDrugInfo: AbstractInfo
+public record DrinkFoodInfo: AbstractInfo
 {
     [JsonIgnore] public new static bool ShouldUpdateDatabaseService => false;
     [JsonPropertyName("foodUseTime")]
