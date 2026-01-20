@@ -1,7 +1,7 @@
 {
   "5f9d9b8e6f8b4a1e30000001": {
     "_id": "5f9d9b8e6f8b4a1e30000001",
-    "_name": "物品包-无痕伸展8x8",
+    "_name": "物品包-无痕伸展9x9",
     "_parent": "5795f317245977243854e041",
     "_proto": "577e1c9d2459773cd707c525",
     "_type": "Item",
@@ -18,8 +18,8 @@
           "_name": "main",
           "_parent": "5f9d9b8e6f8b4a1e30000001",
           "_props": {
-            "cellsH": 8,
-            "cellsV": 8,
+            "cellsH": 9,
+            "cellsV": 9,
             "filters": [
               {
                 "ExcludedFilter": [],
@@ -38,10 +38,10 @@
       ],
       "Height": 1,
       "LootExperience": 500,
-      "Name": "物品包-无痕伸展8x8",
-      "ShortName": "物品包-无痕伸展8x8",
+      "Name": "物品包-无痕伸展9x9",
+      "ShortName": "物品包-无痕伸展9x9",
       "StackMaxSize": 1,
-      "Weight": 0.2,
+      "Weight": -5,
       "Width": 1
     },
     "defaultTrader": "5a7c2eca46aef81a7ca2145d",

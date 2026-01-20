@@ -25,7 +25,7 @@
       "Delay": 1,
       "Duration": 900,
       "SkillName": "",
-      "Value": 0.75
+      "Value": 3.6
     },
     {
       "AbsoluteValue": true,
@@ -155,7 +155,7 @@
       "Delay": 1,
       "Duration": 1200,
       "SkillName": "",
-      "Value": 3.6
+      "Value": 4.8
     },
     {
       "AbsoluteValue": true,

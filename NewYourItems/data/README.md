@@ -5,7 +5,7 @@
 - 新物品文件命名以`.nyi`, `.nyi.json`或`.nyi.jsonc`(推荐jsonc格式)结尾, 符合jsonc格式即可
 
 - 新物品文件必须有以下字段, 推荐基于根据data文件夹下的模板进行修改:
-  ```json
+  ```jsonc
   {
   "$type": "medical", // 必须有
   "baseInfo": {
@@ -36,7 +36,7 @@
 
 `cloneId`和`handbookParentId`都没提供时, 是完全通过`propertyOverride`字段创建
 
-```json
+```jsonc
 "baseInfo": {
     // 物品的唯一标识ID，使用24位十六进制字符串表示
     "id": "6900c8e93ea877662a000000",
@@ -74,7 +74,7 @@
 
 ### attributeInfo
 
-```json
+```jsonc
 // 物品属性配置
 "attributeInfo": {
     // 物品重量（千克）
@@ -106,7 +106,7 @@
 
 这个字段是给食物/饮品/注射器的, 方便注册新buff
 
-```json
+```jsonc
 // 增益效果配置
 "buffsInfo": {
     // 兴奋剂效果配置，空字符串表示无兴奋剂效果
@@ -120,7 +120,7 @@
 
 **注意: 如果stimulatorBuffs赋值了唯一值, buffs赋值为null, 会导致无法注册buffs导致客户端出现问题**
 
-```json
+```jsonc
 // Buff配置
 "buffsInfo": {
     // 注册的buff名称
@@ -155,7 +155,7 @@
 
 ### drinkDrugInfo
 
-```json
+```jsonc
 // 食物/饮品配置
 "drinkFoodInfo": {
   "foodUseTime": 5, // 使用时间
@@ -169,7 +169,7 @@
 
 不同药品写法不太一样, 参考我的模板赋值
 
-```json
+```jsonc
 "medicalInfo": {
   "maxHpResource": null, // 最大治疗耐久
   "hpResourceRate": null, // 每次治疗消耗的耐久
@@ -183,7 +183,7 @@
 
 ### ammoInfo
 
-```json
+```jsonc
 // 弹药属性配置
 "ammoInfo": {
     "ammoType": "bullet",
@@ -230,7 +230,7 @@
 
 ### handbookParentId 可选Id与对应类型
 
-```jsonc
+```jsoncc
 {
   "5b47574386f77428ca22b2ed": "能源物品",
   "5b47574386f77428ca22b2ee": "建筑材料",
@@ -266,7 +266,7 @@
 
 ### 稀有度 rarityPvE
 
-```json
+```jsonc
 {
     "普通": "Common",
     "稀有": "Rare",

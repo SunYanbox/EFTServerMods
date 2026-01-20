@@ -51,7 +51,7 @@ public static class Constant
     public const string SimJueDi = "5f9d9b8e6f8b4a1e3c7d5a2e";
     public const string SimYongJie = "5f9d9b8e6f8b4a1e3c7d5a30";
     // 新模组物品
-    public const string Container8X8 = "5f9d9b8e6f8b4a1e30000001";
+    public const string Container9x9 = "5f9d9b8e6f8b4a1e30000001";
 
     // 商人ID
     public static readonly MongoId TraderTherapistId = new MongoId("54cb57776803fa99248b456e");
