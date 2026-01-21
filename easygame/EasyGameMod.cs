@@ -1,75 +1,20 @@
-﻿using System.Reflection;
-using System.Text.Json.Serialization;
+using System.Reflection;
+using easygame.Configs;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
-using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Models.Spt.Mod;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Services.Mod;
+using Locations = SPTarkov.Server.Core.Models.Spt.Server.Locations;
 using Path = System.IO.Path;
 
 namespace easygame;
-
-
-public record ModMetadata : AbstractModMetadata
-{
-    public override string ModGuid { get; init; } = "com.suntion.easygame";
-    public override string Name { get; init; } = "EasyGame";
-    public override string Author { get; init; } = "Suntion";
-    public override List<string>? Contributors { get; init; } = [];
-    public override SemanticVersioning.Version Version { get; init; } = new("0.2.7");
-    public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
-    
-    
-    public override List<string>? Incompatibilities { get; init; }
-    public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
-    public override string? Url { get; init; }
-    public override bool? IsBundleMod { get; init; } = false;
-    public override string? License { get; init; } = "CC-BY-SA";
-}
-
-
-public static class Constant
-{
-    public const string ModName = "EasyGameMod";
-
-    
-    // 针剂基类
-    public const string SimBase = "5448f3a64bdc2d60728b456a"; // BaseClasses.STIMULATOR
-
-    // 新添针剂
-    public const string SimMengGong = "5f9d9b8e6f8b4a1e3c7d5a2b";
-    public const string SimTiLi = "5f9d9b8e6f8b4a1e3c7d5a2c";
-    public const string SimFuZhong = "5f9d9b8e6f8b4a1e3c7d5a2d";
-    public const string SimJueDi = "5f9d9b8e6f8b4a1e3c7d5a2e";
-    public const string SimYongJie = "5f9d9b8e6f8b4a1e3c7d5a30";
-    // 新模组物品
-    public const string Container9x9 = "5f9d9b8e6f8b4a1e30000001";
-
-    // 商人ID
-    public static readonly MongoId TraderTherapistId = new MongoId("54cb57776803fa99248b456e");
-    public static readonly MongoId TraderMechanic = new MongoId("5a7c2eca46aef81a7ca2145d");
-    
-    // 卢布
-    public static readonly MongoId RebId = new MongoId("5449016a4bdc2d6f028b456f");
-    
-    // 猛攻: 黄(Propital); 体力: 蓝(SJ6); 负重: MULE; 绝地: 红(SJ1); 永劫轮回: 紫(Zagustin)
-}
-
-public struct ModTask
-{
-    public string Name { get; set; }
-    public int Order { get; set; }
-    public Func<bool> Condition { get; set; }
-    public Action Callback { get; set; }
-}
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 100)] // 确保全物品商人能卖新的针剂
 public class EasyGameMod(
@@ -85,7 +30,7 @@ public class EasyGameMod(
     private Dictionary<MongoId, NewItem> _newItems = new();
     private Dictionary<string, List<Buff>> _newEffects = new();
 
-    protected Dictionary<string, ModTask> TasksDictionary = new Dictionary<string, ModTask>();
+    protected readonly Dictionary<string, ModTask> TasksDictionary = new();
 
     public void Info(string msg) => logger.Info($"[{Constant.ModName}] {msg}");
     public void Error(string msg) => logger.Error($"[{Constant.ModName}] {msg}");
@@ -106,7 +51,7 @@ public class EasyGameMod(
 
     public void LoadDataBase()
     {
-        var pathToModData = Path.Combine(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), "data");
+        string pathToModData = Path.Combine(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), "data");
 
         TryCatch("加载模组配置信息", () =>
         {
@@ -268,17 +213,17 @@ public class EasyGameMod(
         List<HashSet<MongoId>> gridFilters = new List<HashSet<MongoId>>();
         List<HashSet<MongoId>> excludedFilters = new List<HashSet<MongoId>>();
         
-        foreach (var (_, container) in itemTep.Where(x => 
+        foreach ((MongoId _, TemplateItem container) in itemTep.Where(x => 
                      x.Value.Properties?.Grids != null 
                      && itemHelper.IsOfBaseclasses(x.Value.Id, [BaseClasses.SIMPLE_CONTAINER, BaseClasses.MOB_CONTAINER])))
         {
             if (container.Properties == null) continue;
             if (container.Properties?.Grids == null) continue;
-            foreach (var grid in container.Properties.Grids)
+            foreach (Grid grid in container.Properties.Grids)
             {
                 if (grid.Properties == null) continue;
                 if (grid.Properties?.Filters == null) continue;
-                foreach (var gridFilter in grid.Properties.Filters)
+                foreach (GridFilter gridFilter in grid.Properties.Filters)
                 {
                     if (gridFilter.Filter != null) gridFilters.Add(gridFilter.Filter);
                     if (gridFilter.ExcludedFilter != null) excludedFilters.Add(gridFilter.ExcludedFilter);
@@ -287,7 +232,7 @@ public class EasyGameMod(
         }
         
 
-        foreach (var (_, newItem) in items)
+        foreach ((MongoId _, NewItem newItem) in items)
         {
             if (string.IsNullOrEmpty(newItem.Id) || newItem.Props == null) continue;
             // 新添物品
@@ -327,10 +272,10 @@ public class EasyGameMod(
                 }
             }
             // 商人售卖
-            if (databaseService.GetTables().Traders.TryGetValue(newItem.DefaultTrader ?? new MongoId(), out var trader))
+            if (databaseService.GetTables().Traders.TryGetValue(newItem.DefaultTrader ?? new MongoId(), out Trader? trader))
             {
                 TraderAssort assort = trader.Assort;
-                Item item = new Item
+                Item item = new()
                 {
                     Id = new MongoId(),
                     Template = newItem.Id,
@@ -378,7 +323,7 @@ public class EasyGameMod(
         Dictionary<string, IEnumerable<Buff>> simulator =
             databaseService.GetTables().Globals.Configuration.Health.Effects.Stimulator.Buffs;
 
-        foreach (var (buffName, newEffect) in _newEffects)
+        foreach ((string buffName, var newEffect) in _newEffects)
         {
             simulator[buffName] = newEffect;
         }
@@ -402,7 +347,7 @@ public class EasyGameMod(
     /// </summary>
     public void ShowLabyrinthInChoiceMenu()
     {
-        var mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
+        Location mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
         mapLabyrinth.Base.Enabled = true;
         mapLabyrinth.Base.ForceOnlineRaidInPVE = false;
     }
@@ -412,7 +357,7 @@ public class EasyGameMod(
     /// </summary>
     public void RemoveRestrictionOnSellingItemsInFlea()
     {
-        foreach (var (_, item) in databaseService.GetItems().Where(
+        foreach ((MongoId _, TemplateItem item) in databaseService.GetItems().Where(
                      x => x.Value.Properties != null && x.Value.Properties.CanSellOnRagfair == false))
         {
             if (item.Properties == null) continue;
@@ -425,10 +370,10 @@ public class EasyGameMod(
     /// </summary>
     public void EnergyHydrationModify()
     {
-        foreach (var (profileName, profileSides) in databaseService.GetProfileTemplates())
+        foreach ((string profileName, ProfileSides profileSides) in databaseService.GetProfileTemplates())
         {
             // 血量修改
-            foreach (var side in new TemplateSide?[] { profileSides.Bear, profileSides.Usec })
+            foreach (TemplateSide? side in new[] { profileSides.Bear, profileSides.Usec })
             {
                 if (side?.Character?.Health?.BodyParts == null) continue;
                 foreach (var (_, bodyPartHealth) in side.Character.Health.BodyParts)
@@ -453,8 +398,8 @@ public class EasyGameMod(
     /// </summary>
     public void RaidTimeAdjust()
     {
-        var locations = databaseService.GetLocations();
-        foreach (var (mapName, location) in locations.GetDictionary())
+        Locations locations = databaseService.GetLocations();
+        foreach ((string mapName, Location location) in locations.GetDictionary())
         {
             if (location.Base?.EscapeTimeLimit == null) continue;
             location.Base.EscapeTimeLimit *= _modConfigData.RaidTimeModify;
@@ -482,7 +427,7 @@ public class EasyGameMod(
     {
         Globals globals = databaseService.GetGlobals();
         string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
-        foreach (var offer in globals.Configuration.RagFair.MaxActiveOfferCount)
+        foreach (MaxActiveOfferCount offer in globals.Configuration.RagFair.MaxActiveOfferCount)
         {
             offer.Count = Math.Max(1, offer.Count);
             offer.Count *= _modConfigData.MaxActiveOfferCountModify;
@@ -499,24 +444,22 @@ public class EasyGameMod(
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         Dictionary<MongoId,double> itemPrices = databaseService.GetTables().Templates.Prices;
         // 修改除了吗啡以外的药剂耐久
-        foreach (var (mongoId, templateItem) in itemTempaltes
-            .Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
+        foreach ((MongoId mongoId, TemplateItem templateItem) in itemTempaltes
+                     .Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
         {
-            if (templateItem.Properties != null)
-            {
-                if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
-                templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
-                templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
-                if (!itemPrices.ContainsKey(mongoId)) itemPrices[mongoId] = 0;
-                itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
-            }
+            if (templateItem.Properties == null) continue;
+            if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
+            templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
+            templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
+            itemPrices.TryAdd(mongoId, 0);
+            itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
         }
     }
 
     public void AllExaminedByDefault()
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
-        foreach (var (mongoId, templateItem) in itemTempaltes
+        foreach ((MongoId _, TemplateItem templateItem) in itemTempaltes
                      .Where(kvp => kvp.Value.Properties?.ExaminedByDefault == false))
         {
             if (templateItem.Properties == null) continue;
@@ -530,14 +473,12 @@ public class EasyGameMod(
     public void AdjustAmmoStackMaxSize()
     {
         Dictionary<MongoId, TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
-        foreach (var tpl in itemHelper.GetItemTplsOfBaseType(BaseClasses.AMMO.ToString()))
+        foreach (MongoId tpl in itemHelper.GetItemTplsOfBaseType(BaseClasses.AMMO.ToString()))
         {
-            if (itemTempaltes.TryGetValue(tpl, out var templateItem))
+            if (!itemTempaltes.TryGetValue(tpl, out TemplateItem? templateItem)) continue;
+            if (templateItem.Properties != null && templateItem.Properties.StackMaxSize != null)
             {
-                if (templateItem.Properties != null && templateItem.Properties.StackMaxSize != null)
-                {
-                    templateItem.Properties.StackMaxSize = Math.Max(_modConfigData?.AmmoStack ?? 0, templateItem.Properties.StackMaxSize ?? 1);
-                }
+                templateItem.Properties.StackMaxSize = Math.Max(_modConfigData?.AmmoStack ?? 0, templateItem.Properties.StackMaxSize ?? 1);
             }
         }
     }
@@ -586,12 +527,12 @@ public class EasyGameMod(
         assort.LoyalLevelItems[item.Id] = 1;
         assort.BarterScheme[item.Id] = new List<List<BarterScheme>>
         {
-            new List<BarterScheme>
+            new()
             {
                 new BarterScheme
                 {
                     Count = price,
-                    Template = Constant.RebId
+                    Template = Constant.RubId
                 }
             }
         };
@@ -605,14 +546,3 @@ public class EasyGameMod(
     
     
 }
-
-
-
-
-
-
-
-
-
-
-
