@@ -257,7 +257,7 @@ public class EasyGameMod(
                 OverrideProperties = newItem.Props
             };
             customItemService.CreateItemFromClone(details);
-            if (!newItem.ParentContainer ?? false)
+            if (!(newItem.ParentContainer ?? false))
             {
                 // 允许容器放这个物品
                 foreach (var gridFilter in gridFilters)
