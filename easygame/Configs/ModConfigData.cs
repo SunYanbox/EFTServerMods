@@ -23,8 +23,6 @@ internal record ModConfigData {
     public double CheckAmmoTimeModify {get; set;}
     [JsonPropertyName("每级跳蚤市场挂单上限倍率")]
     public double MaxActiveOfferCountModify {get; set;}
-    [JsonPropertyName("输出修改结果日志")]
-    public bool OutputResultLogOfAdjust {get; set;}
     [JsonPropertyName("实验室访问卡耐久")]
     public int LabsAccessMaximumNumberOfUsage {get; set;}
     [JsonPropertyName("迷宫访问卡耐久")]

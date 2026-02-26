@@ -8,10 +8,6 @@ internal record WhetherEnableFunction
     public bool IsUnlockAllItemsSellLimit {get; set;}
     [JsonPropertyName("是否将迷宫地图显示于地图选择页面")]
     public bool ShowMapToChoiceScene {get; set;}
-    [JsonPropertyName("是否启用新针剂")]
-    public bool NewStimulator {get; set;}
-    [JsonPropertyName("是否启用新物品")]
-    public bool NewItems {get; set;}
     [JsonPropertyName("是否自定义带入物品限制")]
     public bool EnterGameItemLimit {get; set;}
     [JsonPropertyName("是否修改血量与水分")]

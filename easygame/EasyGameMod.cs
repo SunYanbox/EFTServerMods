@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using easygame.Configs;
 using SPTarkov.DI.Annotations;
@@ -6,11 +7,9 @@ using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
-using SPTarkov.Server.Core.Models.Spt.Mod;
 using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services;
-using SPTarkov.Server.Core.Services.Mod;
+using SuntionCore.Services.LogUtils;
 using Locations = SPTarkov.Server.Core.Models.Spt.Server.Locations;
 using Path = System.IO.Path;
 
@@ -19,21 +18,16 @@ namespace easygame;
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 100)] // 确保全物品商人能卖新的针剂
 public class EasyGameMod(
     ModHelper modHelper,
-    ISptLogger<EasyGameMod> logger,
     DatabaseService databaseService,
-    ConfigServer configServer,
-    ItemHelper itemHelper,
-    CustomItemService customItemService) : IOnLoad
+    ISptLogger<EasyGameMod> sptLogger,
+    ItemHelper itemHelper) : IOnLoad
 {
     private ModConfigData? _modConfigData;
-    private Dictionary<MongoId, NewItem> _newStimulators = new();
-    private Dictionary<MongoId, NewItem> _newItems = new();
-    private Dictionary<string, List<Buff>> _newEffects = new();
+    public static readonly ModLogger ModLogger = ModLogger.GetOrCreateLogger(nameof(EasyGameMod), logFileMaxSize: 120 * 1024);
 
     protected readonly Dictionary<string, ModTask> TasksDictionary = new();
 
-    public void Info(string msg) => logger.Info($"[{Constant.ModName}] {msg}");
-    public void Error(string msg) => logger.Error($"[{Constant.ModName}] {msg}");
+    public void Info(string msg) => sptLogger.Info(ModLogger.Info(msg));
 
     public void Register(ModTask modTask) => TasksDictionary.Add(modTask.Name, modTask);
 
@@ -45,7 +39,7 @@ public class EasyGameMod(
 
         HandleModTasks();
         
-        logger.Info($"[{Constant.ModName}] 模组加载完毕");
+        Info("模组加载完毕");
         return Task.CompletedTask;
     }
 
@@ -58,39 +52,10 @@ public class EasyGameMod(
             _modConfigData = modHelper.GetJsonDataFromFile<ModConfigData>(pathToModData, "config.json");
             return Task.CompletedTask;
         });
-        TryCatch("加载新针剂信息", () =>
-        {
-            _newStimulators = modHelper.GetJsonDataFromFile<Dictionary<MongoId, NewItem>>(pathToModData, "itemStimulators.json");
-            return Task.CompletedTask;
-        });
-        TryCatch("加载新物品信息", () =>
-        {
-            _newItems = modHelper.GetJsonDataFromFile<Dictionary<MongoId, NewItem>>(pathToModData, "items.json");
-            return Task.CompletedTask;
-        });
-        TryCatch("加载新针剂效果信息", () =>
-        {
-            _newEffects = modHelper.GetJsonDataFromFile<Dictionary<string, List<Buff>>>(pathToModData, "effects.json");
-            return Task.CompletedTask;
-        });
     }
 
     public void InitModTasks()
     {
-        Register(new ModTask
-        {
-            Callback = AddNewSimulatorItem,
-            Order = 5000,
-            Condition = () => _modConfigData?.EnableFunction?.NewStimulator ?? false,
-            Name = "添加新的强力针剂",
-        });
-        Register(new ModTask
-        {
-            Callback = AddNewItems,
-            Order = 5000,
-            Condition = () => _modConfigData?.EnableFunction?.NewItems ?? false,
-            Name = "添加新的模组物品",
-        });
         Register(new ModTask
         {
             Callback = AdjustMaxInRaidAndLobby,
@@ -179,7 +144,7 @@ public class EasyGameMod(
     
     public void HandleModTasks()
     {
-        foreach (var modTask in TasksDictionary.OrderBy(x => x.Value.Order).ToList())
+        foreach (KeyValuePair<string, ModTask> modTask in TasksDictionary.OrderBy(x => x.Value.Order).ToList())
         {
             string name = modTask.Key;
             Task.Run(() =>
@@ -189,143 +154,16 @@ public class EasyGameMod(
                     if (modTask.Value.Condition())
                     {
                         modTask.Value.Callback();
-                        Info($" {DateTime.Now:MM-dd HH:mm:ss:fff} [{name}]: 已完成");
+                        ModLogger.Info($"[{name}]: 已完成");
                     }
                     else
                     {
-                        Info($" [{name}]: 已跳过");
+                        ModLogger.Info($"[{name}]: 已跳过");
                     }
 
                     return Task.CompletedTask;
                 });
             }).Wait();
-        }
-    }
-
-    /// <summary>
-    /// 批量添加新物品
-    /// </summary>
-    /// <param name="items"></param>
-    protected void BatchAddNewItems(Dictionary<MongoId,NewItem> items)
-    {
-        Dictionary<MongoId,TemplateItem> itemTep = databaseService.GetTables().Templates.Items;
-        
-        List<HashSet<MongoId>> gridFilters = new List<HashSet<MongoId>>();
-        List<HashSet<MongoId>> excludedFilters = new List<HashSet<MongoId>>();
-        
-        foreach ((MongoId _, TemplateItem container) in itemTep.Where(x => 
-                     x.Value.Properties?.Grids != null 
-                     && itemHelper.IsOfBaseclasses(x.Value.Id, [BaseClasses.SIMPLE_CONTAINER, BaseClasses.MOB_CONTAINER])))
-        {
-            if (container.Properties == null) continue;
-            if (container.Properties?.Grids == null) continue;
-            foreach (Grid grid in container.Properties.Grids)
-            {
-                if (grid.Properties == null) continue;
-                if (grid.Properties?.Filters == null) continue;
-                foreach (GridFilter gridFilter in grid.Properties.Filters)
-                {
-                    if (gridFilter.Filter != null) gridFilters.Add(gridFilter.Filter);
-                    if (gridFilter.ExcludedFilter != null) excludedFilters.Add(gridFilter.ExcludedFilter);
-                }
-            }
-        }
-        
-
-        foreach ((MongoId _, NewItem newItem) in items)
-        {
-            if (string.IsNullOrEmpty(newItem.Id) || newItem.Props == null) continue;
-            // 新添物品
-            NewItemFromCloneDetails details = new NewItemFromCloneDetails
-            {
-                ItemTplToClone = newItem.ItemTplToClone,
-                ParentId = newItem.Parent,
-                NewId = newItem.Id,
-                FleaPriceRoubles = newItem.Price,
-                HandbookPriceRoubles = newItem.Price,
-                Locales = new Dictionary<string, LocaleDetails>
-                {
-                    {
-                        "ch", new LocaleDetails
-                        {
-                            Name = newItem.Props.Name ?? "w未知物品",
-                            ShortName = newItem.Props.ShortName ?? "未知物品",
-                            Description = newItem.Props.Description ?? "未知物品"
-                        }
-                    }
-                },
-                OverrideProperties = newItem.Props
-            };
-            customItemService.CreateItemFromClone(details);
-            if (!(newItem.ParentContainer ?? false))
-            {
-                // 允许容器放这个物品
-                foreach (var gridFilter in gridFilters)
-                {
-                    gridFilter.Add(newItem.Id);
-                }
-                // 去掉限制
-                foreach (var excludedFilter in excludedFilters)
-                {
-                    if (excludedFilter.Contains(newItem.Id)) excludedFilter.Remove(newItem.Id);
-                    if (newItem.Parent != null) if (excludedFilter.Contains(newItem.Parent)) excludedFilter.Remove(newItem.Parent);
-                }
-            }
-            // 商人售卖
-            if (databaseService.GetTables().Traders.TryGetValue(newItem.DefaultTrader ?? new MongoId(), out Trader? trader))
-            {
-                TraderAssort assort = trader.Assort;
-                Item item = new()
-                {
-                    Id = new MongoId(),
-                    Template = newItem.Id,
-                    ParentId = "hideout",
-                    SlotId = "hideout",
-                    Upd = new Upd
-                    {
-                        UnlimitedCount = true,
-                        StackObjectsCount = 9999999
-                    }
-                };
-                AddItemToAssort(assort, item, newItem.Price ?? 404, 1);
-            }
-            else
-            {
-                Error($"物品{newItem.Name}({newItem.Id})的默认商人{newItem.DefaultTrader}不存在");
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 添加新的强力针剂
-    /// </summary>
-    public void AddNewSimulatorItem()
-    {
-        TryCatch("注册针剂效果", () =>
-        {
-            AddNewEffectForSimulator();
-            return Task.CompletedTask;
-        });
-
-        BatchAddNewItems(_newStimulators);
-    }
-    
-    /// <summary>
-    /// 添加新的模组物品
-    /// </summary>
-    public void AddNewItems()
-    {
-        BatchAddNewItems(_newItems);
-    }
-
-    public void AddNewEffectForSimulator()
-    {
-        Dictionary<string, IEnumerable<Buff>> simulator =
-            databaseService.GetTables().Globals.Configuration.Health.Effects.Stimulator.Buffs;
-
-        foreach ((string buffName, var newEffect) in _newEffects)
-        {
-            simulator[buffName] = newEffect;
         }
     }
 
@@ -340,6 +178,7 @@ public class EasyGameMod(
             dataItem.MaxInLobby =
                 Math.Max(dataItem.MaxInLobby, _modConfigData?.EnterGameItemLimit ?? dataItem.MaxInLobby);
         }
+        ModLogger.Info("已成功设置物品带入对局限制");
     }
 
     /// <summary>
@@ -350,6 +189,7 @@ public class EasyGameMod(
         Location mapLabyrinth = databaseService.GetTables().Locations.Labyrinth;
         mapLabyrinth.Base.Enabled = true;
         mapLabyrinth.Base.ForceOnlineRaidInPVE = false;
+        ModLogger.Info("已成功设置迷宫地图显示在地图选择界面");
     }
 
     /// <summary>
@@ -357,12 +197,25 @@ public class EasyGameMod(
     /// </summary>
     public void RemoveRestrictionOnSellingItemsInFlea()
     {
-        foreach ((MongoId _, TemplateItem item) in databaseService.GetItems().Where(
-                     x => x.Value.Properties != null && x.Value.Properties.CanSellOnRagfair == false))
+        List<MongoId> noProperties = [];
+        KeyValuePair<MongoId, TemplateItem>[] existCanSellOnRagfair = databaseService.GetItems().Where(
+            x => x.Value.Properties != null && x.Value.Properties.CanSellOnRagfair == false).ToArray();
+        foreach ((MongoId tpl, TemplateItem item) in existCanSellOnRagfair)
         {
-            if (item.Properties == null) continue;
+            if (item.Properties == null)
+            {
+                noProperties.Add(tpl);
+                continue;
+            }
             item.Properties.CanSellOnRagfair = true;
         }
+        
+        if (noProperties.Count != 0)
+        {
+            ModLogger.Error("修改物品在跳蚤市场售卖限制时这些物品模板没有Properties属性信息:\n\t - " + string.Join("\n\t - ", noProperties));
+        }
+
+        ModLogger.Info($"解除物品在跳蚤售卖限制成功率: {1.0d - (double)noProperties.Count / existCanSellOnRagfair.Length:P3}");
     }
 
     /// <summary>
@@ -370,6 +223,7 @@ public class EasyGameMod(
     /// </summary>
     public void EnergyHydrationModify()
     {
+        List<string> successChange = [];
         foreach ((string profileName, ProfileSides profileSides) in databaseService.GetProfileTemplates())
         {
             // 血量修改
@@ -389,8 +243,10 @@ public class EasyGameMod(
                 side.Character.Health.Energy.Maximum *= _modConfigData.EnergyHydrationModify;
                 side.Character.Health.Hydration.Maximum *= _modConfigData.EnergyHydrationModify;
             }
-            if (_modConfigData.OutputResultLogOfAdjust) Info($"存档类型{profileName}修改完毕");
+            successChange.Add(profileName);
         }
+
+        ModLogger.Debug("成功修改的存档信息: " + string.Join(", ", successChange));
     }
 
     /// <summary>
@@ -399,13 +255,17 @@ public class EasyGameMod(
     public void RaidTimeAdjust()
     {
         Locations locations = databaseService.GetLocations();
+        List<string> mapChangeResults = [];
         foreach ((string mapName, Location location) in locations.GetDictionary())
         {
             if (location.Base?.EscapeTimeLimit == null) continue;
+            double oldTimeLimit = location.Base.EscapeTimeLimit.Value;
             location.Base.EscapeTimeLimit *= _modConfigData.RaidTimeModify;
-            location.Base.EscapeTimeLimit = Math.Max(1, location.Base?.EscapeTimeLimit ?? 0);
-            if (_modConfigData.OutputResultLogOfAdjust) Info($"地图{mapName}的对局时间已被修改至: {location.Base?.EscapeTimeLimit ?? -1}");
+            location.Base.EscapeTimeLimit = Math.Max(1, location.Base.EscapeTimeLimit ?? 0);
+            mapChangeResults.Add($"地图{mapName}的对局时间已修改: {oldTimeLimit}min -> {location.Base.EscapeTimeLimit ?? -1}min");
         }
+
+        ModLogger.Info("地图持续时间修改结果:\n\t - " + string.Join("\n\t - ", mapChangeResults));
     }
 
     /// <summary>
@@ -417,7 +277,7 @@ public class EasyGameMod(
         globals.Configuration.BaseCheckTime *= _modConfigData.CheckAmmoTimeModify;
         globals.Configuration.BaseLoadTime *= _modConfigData.TakeInAmmoTimeModify;
         globals.Configuration.BaseUnloadTime *= _modConfigData.TakeOutAmmoTimeModify;
-        if (_modConfigData.OutputResultLogOfAdjust) Info($"弹夹相关修改结果: 装弹({globals.Configuration.BaseLoadTime}s) 卸弹({globals.Configuration.BaseUnloadTime}s) 检查({globals.Configuration.BaseCheckTime}s)");
+        ModLogger.Info($"弹夹相关修改结果: 装弹({globals.Configuration.BaseLoadTime}s) 卸弹({globals.Configuration.BaseUnloadTime}s) 检查({globals.Configuration.BaseCheckTime}s)");
     }
 
     /// <summary>
@@ -426,14 +286,15 @@ public class EasyGameMod(
     public void FleaPendingOrderLimitModification()
     {
         Globals globals = databaseService.GetGlobals();
-        string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): \n";
+        const string result = "跳蚤挂单上限修改结果(特刊计数->挂单数量): ";
+        List<string> countChange = [];
         foreach (MaxActiveOfferCount offer in globals.Configuration.RagFair.MaxActiveOfferCount)
         {
             offer.Count = Math.Max(1, offer.Count);
             offer.Count *= _modConfigData.MaxActiveOfferCountModify;
-            result += $"\t{offer.CountForSpecialEditions} -> {offer.Count}";
+            countChange.Add($"{offer.CountForSpecialEditions} -> {offer.Count}");
         }
-        if (_modConfigData.OutputResultLogOfAdjust) Info(result);
+        ModLogger.Debug(result + string.Join(", ", countChange));
     }
     
     /// <summary>
@@ -443,28 +304,67 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         Dictionary<MongoId,double> itemPrices = databaseService.GetTables().Templates.Prices;
+        KeyValuePair<MongoId,TemplateItem>[] simulatorItems = itemTempaltes.Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR).ToArray();
+        ModLogger.Debug($"获取到的针剂数量有: {simulatorItems.Length}个");
+        List<MongoId> noProperties = [];
+        List<MongoId> noWeightOrMaxHpResource = [];
+        
         // 修改除了吗啡以外的药剂耐久
-        foreach ((MongoId mongoId, TemplateItem templateItem) in itemTempaltes
-                     .Where(kvp => kvp.Value.Parent.ToString() == Constant.SimBase && kvp.Value.Id.ToString() != ItemTpl.DRUGS_MORPHINE_INJECTOR))
+        foreach ((MongoId mongoId, TemplateItem templateItem) in simulatorItems)
         {
-            if (templateItem.Properties == null) continue;
-            if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null) continue;
+            if (templateItem.Properties == null)
+            {
+                noProperties.Add(mongoId);
+                continue;
+            }
+            if (templateItem.Properties.MaxHpResource == null || templateItem.Properties.Weight == null)
+            {
+                noWeightOrMaxHpResource.Add(mongoId);
+                continue;
+            }
             templateItem.Properties.MaxHpResource = _modConfigData?.StimulatorConfig?.UseTimes ?? 1;
             templateItem.Properties.Weight = _modConfigData?.StimulatorConfig?.Weight ?? 0.05;
             itemPrices.TryAdd(mongoId, 0);
             itemPrices[mongoId] *= _modConfigData?.StimulatorConfig?.PriceModify ?? 1;
         }
+        
+        if (noProperties.Count > 0)
+        {
+            ModLogger.Error("修改针剂堆叠与质量时这些物品模板没有Properties属性信息:\n\t - " + string.Join("\n\t - ", noProperties));
+        }
+        
+        if (noWeightOrMaxHpResource.Count > 0)
+        {
+            ModLogger.Error("修改针剂堆叠与质量时这些物品模板没有质量属性(一般大于0)与针剂使用次数属性(默认 1):\n\t - " + string.Join("\n\t - ", noWeightOrMaxHpResource));
+        }
+
+        ModLogger.Info($"修改针剂使用次数与质量成功率: {
+            (double)(simulatorItems.Length - noProperties.Count - noWeightOrMaxHpResource.Count) 
+            / simulatorItems.Length:P3}");
     }
 
     public void AllExaminedByDefault()
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
-        foreach ((MongoId _, TemplateItem templateItem) in itemTempaltes
-                     .Where(kvp => kvp.Value.Properties?.ExaminedByDefault == false))
+        KeyValuePair<MongoId,TemplateItem>[] items = itemTempaltes.Where(kvp => kvp.Value.Properties?.ExaminedByDefault == false).ToArray();
+        ModLogger.Debug($"默认未检视物品有: {items.Length}个");
+        List<MongoId> noProperties = [];
+        foreach ((MongoId tpl, TemplateItem templateItem) in items)
         {
-            if (templateItem.Properties == null) continue;
+            if (templateItem.Properties == null)
+            {
+                noProperties.Add(tpl);
+                continue;
+            }
             templateItem.Properties.ExaminedByDefault = true;
         }
+
+        if (noProperties.Count != 0)
+        {
+            ModLogger.Error("修改默认检视时这些物品模板没有Properties属性信息:\n\t - " + string.Join("\n\t - ", noProperties));
+        }
+
+        ModLogger.Info($"设置物品默认检视成功率: {1.0d - (double)noProperties.Count / items.Length:P3}");
     }
     
     /// <summary>
@@ -473,14 +373,31 @@ public class EasyGameMod(
     public void AdjustAmmoStackMaxSize()
     {
         Dictionary<MongoId, TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
-        foreach (MongoId tpl in itemHelper.GetItemTplsOfBaseType(BaseClasses.AMMO.ToString()))
+        MongoId[] ammo = itemHelper.GetItemTplsOfBaseType(BaseClasses.AMMO.ToString()).ToArray();
+        ModLogger.Debug($"准备修改弹药堆叠时获取到弹药类型: {ammo.Length}个");
+        List<MongoId> cantFound = [];
+        List<string> successChange = [];
+        foreach (MongoId tpl in ammo)
         {
-            if (!itemTempaltes.TryGetValue(tpl, out TemplateItem? templateItem)) continue;
+            if (!itemTempaltes.TryGetValue(tpl, out TemplateItem? templateItem))
+            {
+                cantFound.Add(tpl);
+                continue;
+            }
             if (templateItem.Properties != null && templateItem.Properties.StackMaxSize != null)
             {
+                int beforeSize = templateItem.Properties.StackMaxSize.Value;
                 templateItem.Properties.StackMaxSize = Math.Max(_modConfigData?.AmmoStack ?? 0, templateItem.Properties.StackMaxSize ?? 1);
+                successChange.Add($"{templateItem.Name}({tpl}): {beforeSize} -> {templateItem.Properties.StackMaxSize}");
             }
         }
+
+        if (cantFound.Count > 0)
+        {
+            ModLogger.Error("修改弹药堆叠时这些弹药未在数据库找到物品模板信息:\n\t - " + string.Join("\n\t - ", cantFound));
+        }
+
+        ModLogger.Debug("成功修改的弹药堆叠信息:\n\t - " + string.Join("\n\t - ", successChange) + $"\n\t * 成功率: {(double)successChange.Count / ammo.Length:P3}");
     }
 
     /// <summary>
@@ -490,9 +407,14 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         TemplateItem templateItem = itemTempaltes[ItemTpl.KEYCARD_TERRAGROUP_LABS_ACCESS];
+        ModLogger.Debug($"已获取到实验室访问卡: {templateItem.Id}, {templateItem.Name}, 可用次数: {templateItem.Properties?.MaximumNumberOfUsage}");
         if (templateItem.Properties != null)
-            templateItem.Properties.MaximumNumberOfUsage = 
-                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabsAccessMaximumNumberOfUsage ?? 1);
+        {
+            templateItem.Properties.MaximumNumberOfUsage =
+                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1,
+                    _modConfigData?.LabsAccessMaximumNumberOfUsage ?? 1);
+            ModLogger.Info($"已成功设置实验室访问卡次数为: {templateItem.Properties.MaximumNumberOfUsage}");
+        }
     }
     
     /// <summary>
@@ -502,47 +424,30 @@ public class EasyGameMod(
     {
         Dictionary<MongoId,TemplateItem> itemTempaltes = databaseService.GetTables().Templates.Items;
         TemplateItem templateItem = itemTempaltes[ItemTpl.KEYCARD_LABRYS_ACCESS];
+        ModLogger.Debug($"已获取到迷宫访问卡: {templateItem.Id}, {templateItem.Name}, 可用次数: {templateItem.Properties?.MaximumNumberOfUsage}");
         if (templateItem.Properties != null)
-            templateItem.Properties.MaximumNumberOfUsage = 
-                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1, _modConfigData?.LabysAccessMaximumNumberOfUsage ?? 1);
-        
+        {
+            templateItem.Properties.MaximumNumberOfUsage =
+                Math.Max(templateItem.Properties.MaximumNumberOfUsage ?? 1,
+                    _modConfigData?.LabysAccessMaximumNumberOfUsage ?? 1);
+            ModLogger.Info($"已成功设置迷宫访问卡次数为: {templateItem.Properties.MaximumNumberOfUsage}");
+        }
     }
     
     public void TryCatch(string name, Func<Task> func)
     {
+        Stopwatch stopwatch = new();
         try
         {
+            stopwatch.Start();
             func();
+            stopwatch.Stop();
+            ModLogger.Debug($"任务<{name}>执行成功, 耗时{stopwatch.Elapsed.TotalMilliseconds:F3} ms");
         }
         catch (Exception e)
         {
-            logger.Error($"[{Constant.ModName}]<{name}> {e.Message}, {e.StackTrace}");
+            sptLogger.Error(ModLogger.Error($"任务<{name}>执行失败: {e.Message}, {e.StackTrace}"), e);
             // throw;
         }
     }
-    
-    public void AddItemToAssort(TraderAssort assort, Item item, double price = 0, int loyalLevel = 1)
-    {
-        assort.Items.Add(item);
-        assort.LoyalLevelItems[item.Id] = 1;
-        assort.BarterScheme[item.Id] = new List<List<BarterScheme>>
-        {
-            new()
-            {
-                new BarterScheme
-                {
-                    Count = price,
-                    Template = Constant.RubId
-                }
-            }
-        };
-    }
-    
-    
-    
-    
-    
-    
-    
-    
 }
