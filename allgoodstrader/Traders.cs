@@ -314,7 +314,7 @@ internal class Traders(
     public void AddItemToAssort(TraderAssort assort, Item item, double price = 0, int loyalLevel = 1)
     {
         assort.Items.Add(item);
-        assort.LoyalLevelItems[item.Id] = 1;
+        assort.LoyalLevelItems[item.Id] = loyalLevel;
         assort.BarterScheme[item.Id] =
         [
             [
